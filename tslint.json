@@ -1,0 +1,303 @@
+{
+    "defaultSeverity": "error",
+    "extends": [
+        "tslint:recommended"
+    ],
+    "jsRules": {},
+	"rules": {
+		/////////////////////////////////////////////////////////////////////////////
+		///////////////////////////    Tslint Built-In    ///////////////////////////
+		/////////////////////////////////////////////////////////////////////////////
+
+		/////////////////////////////////////////////////////
+		//////////////// TypeScript-specific ////////////////
+		/////////////////////////////////////////////////////
+		"adjacent-overload-signatures": true, // Enforces function overloads to be consecutive.
+		"ban-ts-ignore": true, // Bans “// @ts-ignore” comments from being used.
+		"ban-types": [
+			true,
+			["String", "Use string instead"],
+			["Boolean", "Use boolean instead"]
+		], // Bans specific types from being used. Does not ban the corresponding runtime objects from being used.
+		"member-access": false, // Requires explicit visibility declarations for class members.
+		"member-ordering": [
+			true,
+			{
+				"order": [
+					"public-static-field",
+					"protected-static-field",
+					"private-static-field",
+					"public-static-method",
+					"protected-static-method",
+					"private-static-method",
+					"public-instance-field",
+					"protected-instance-field",
+					"private-instance-field",
+					"public-constructor",
+					"protected-constructor",
+					"private-constructor",
+					"public-instance-method",
+					"protected-instance-method",
+					"private-instance-method"
+				]
+			}
+		], // Enforces member ordering.
+		"no-any": true, // Disallows usages of any as a type declaration.
+		"no-empty-interface": false, // Forbids empty interfaces.
+		"no-import-side-effect": [
+			true,
+			{
+				"ignore-module": "globals"
+			}
+		], // Avoid import statements with side-effect.
+		"no-inferrable-types": true, // Disallows explicit type declarations for variables or parameters initialized to a number, string, or boolean.
+		"no-internal-module": true, // Disallows internal module
+		"no-magic-numbers": false, // Disallows the use constant number values outside of variable assignments. When no list of allowed values is specified, -1, 0 and 1 are allowed by default.
+		"no-namespace": [true, "allow-declarations"], // Disallows use of internal modules and namespaces.
+		"no-non-null-assertion": false, // Disallows non-null assertions using the ! postfix operator.
+		"no-parameter-reassignment": false, // Disallows reassigning parameters.
+		"no-reference": true, // Disallows /// <reference path=> imports (use ES6-style imports instead).
+		"no-unnecessary-type-assertion": true, // Warns if a type assertion does not change the type of an expression.
+		"no-var-requires": true, // Disallows the use of require statements except in import statements.
+		"only-arrow-functions": false, // Disallows traditional (non-arrow) function expressions.
+		"prefer-for-of": true, // Recommends a ‘for-of’ loop over a standard ‘for’ loop if the index is only used to access the array being iterated.
+		"promise-function-async": true, // Requires any function or method that returns a promise to be marked async.
+		"typedef": false, // Requires type definitions to exist.
+		"typedef-whitespace": [
+			true,
+			{
+				"call-signature": "nospace",
+				"index-signature": "nospace",
+				"parameter": "nospace",
+				"property-declaration": "nospace",
+				"variable-declaration": "nospace"
+			},
+			{
+				"call-signature": "onespace",
+				"index-signature": "onespace",
+				"parameter": "onespace",
+				"property-declaration": "onespace",
+				"variable-declaration": "onespace"
+			}
+		], // Requires or disallows whitespace for type definitions.
+		"unified-signatures": false, // Warns for any two overloads that could be unified into one by using a union or an optional/rest parameter.
+
+		/////////////////////////////////////////////////////
+		////////////////    Functionality    ////////////////
+		/////////////////////////////////////////////////////
+		"await-promise": false, // Warns for an awaited value that is not a Promise.
+		"ban-comma-operator": true, // Disallows the comma operator to be used.
+		"ban": [
+			true,
+			"eval",
+			{
+				"name": "$",
+				"message": "Don't. Just don't..."
+            },
+			["describe", "only"],
+			{
+				"name": ["it", "only"],
+				"message": "Don't focus tests."
+			},
+			{
+				"name": ["chai", "assert", "equal"],
+				"message": "Use 'strictEqual' instead."
+			},
+			{
+				"name": ["*", "forEach"],
+				"message": "Use a regular for loop instead."
+			}
+		], // Bans the use of specific functions or global methods.
+		"curly": true, // Enforces braces for if/for/do/while statements.
+		"forin": false, // Requires a for ... in statement to be filtered with an if statement.
+		"function-constructor": true, // Prevents using the built-in Function constructor.
+		"import-blacklist": false, // Disallows importing the specified modules via import and require, or importing specific named exports of the specified modules.
+		"label-position": true, // Only allows labels in sensible locations.
+		"no-arg": true, // Disallows use of arguments.callee.
+		"no-bitwise": true, // Disallows bitwise operators.
+		"no-conditional-assignment": true, // Disallows any type of assignment in conditionals.
+		"no-console": true, // Bans the use of specified console methods.
+		"no-construct": true, // Disallows access to the constructors of String, Number, and Boolean.
+		"no-debugger": true, // Disallows debugger statements.
+		"no-duplicate-super": true, // Warns if ‘super()’ appears twice in a constructor.
+		"no-duplicate-switch-case": true, // Prevents duplicate cases in switch statements.
+		"no-duplicate-variable": true, // Disallows duplicate variable declarations in the same block scope.
+		"no-dynamic-delete": true, // Bans usage of the delete operator with computed key expressions.
+		"no-empty": false, // Disallows empty blocks.
+		"no-eval": true, // Disallows eval function invocations.
+		"no-floating-promises": true, // Promises returned by functions must be handled appropriately.
+		"no-for-in-array": true, // Disallows iterating over an array with a for-in loop.
+		"no-implicit-dependencies": [true, "dev"], // Disallows importing modules that are not listed as dependency in the project’s package.json
+		"no-inferred-empty-object-type": true, // Disallow type inference of {} (empty object type) at function and constructor call sites
+		"no-invalid-template-strings": true, // Warns on use of ${ in non-template strings.
+		"no-invalid-this": true, // Disallows using the this keyword outside of classes.
+		"no-misused-new": true, // Warns on apparent attempts to define constructors for interfaces or new for classes.
+		"no-null-keyword": true, // Disallows use of the null keyword literal.
+		"no-object-literal-type-assertion": true, // Forbids an object literal to appear in a type assertion expression. Casting to any or to unknown is still allowed.
+		"no-return-await": true, // Disallows unnecessary return await.
+		"no-shadowed-variable": true, // Disallows shadowing variable declarations.
+		"no-sparse-arrays": true, // Forbids array literals to contain missing elements.
+		"no-string-literal": true, // Forbids unnecessary string literal property access. Allows obj["prop-erty"] (can’t be a regular property access). Disallows obj["property"] (should be obj.property).
+		"no-string-throw": true, // Flags throwing plain strings or concatenations of strings.
+		"no-submodule-imports": false, // Disallows importing any submodule.
+		"no-switch-case-fall-through": true, // Disallows falling through case statements, except with magic comment /* falls through */
+		"no-this-assignment": false, // Disallows unnecessary references to this.
+		"no-unbound-method": false, // Warns when a method is used outside of a method call.
+		"no-unnecessary-class": [
+			true,
+			"allow-constructor-only",
+			"allow-empty-class",
+			"allow-static-only"
+		], // Disallows classes that are not strictly necessary.
+		"no-unsafe-any": false, // Warns when using an expression of type ‘any’ in a dynamic way. Uses are only allowed if they would work for {} | null | undefined. Type casts and tests are allowed. Expressions that work on all values (such as "" + x) are allowed.
+		"no-unsafe-finally": true, // Disallows control flow statements, such as return, continue, break and throws in finally blocks.
+		"no-unused-expression": [true, "allow-fast-null-checks"], // Disallows unused expression statements.
+		// "no-unused-variable": true, // Disallows unused imports, variables, functions and private class members. Similar to tsc’s –noUnusedParameters and –noUnusedLocals options, but does not interrupt code compilation.
+		// "no-use-before-declare": true, //Disallows usage of variables before their declaration.
+		"no-var-keyword": true, // Disallows usage of the var keyword.
+		"no-void-expression": [
+			true,
+			"ignore-arrow-function-shorthand"
+		], // Requires expressions of type void to appear in statement position.
+		"prefer-conditional-expression": true, // Recommends to use a conditional expression instead of assigning to the same thing in each branch of an if statement.
+		"prefer-object-spread": true, // Enforces the use of the ES2018 object spread operator over Object.assign() where appropriate.
+		"radix": true, // Requires the radix parameter to be specified when calling parseInt.
+		"restrict-plus-operands": true, // When adding two variables, operands must both be of type number or of type string.
+		"strict-boolean-expressions": false, // Restricts the types allowed in boolean expressions. By default only booleans are allowed. The following nodes are checked:
+		"strict-type-predicates": false, // Warns for type predicates that are always true or always false. Works for ‘typeof’ comparisons to constants (e.g. ‘typeof foo === “string”’), and equality comparison to ‘null’/’undefined’. (TypeScript won’t let you compare ‘1 === 2’, but it has an exception for ‘1 === undefined’.) Does not yet work for ‘instanceof’. Does not warn for ‘if (x.y)’ where ‘x.y’ is always truthy. For that, see strict-boolean-expressions. This rule requires strictNullChecks to work properly.
+		"switch-default": false, // Require a default case in all switch statements.
+		"triple-equals": [true, "allow-undefined-check"], // Requires === and !== in place of == and !=.
+		// "typeof-compare": true, // Makes sure result of typeof is compared to correct string values
+		"unnecessary-constructor": true, // Prevents blank constructors, as they are redundant.
+		"use-default-type-parameter": true, // Warns if an explicitly specified type argument is the default for that type parameter.
+		"use-isnan": true, // Enforces use of the isNaN() function to check for NaN references instead of a comparison to the NaN constant.
+
+		/////////////////////////////////////////////////////
+		////////////////   Maintainability   ////////////////
+		/////////////////////////////////////////////////////
+		"cyclomatic-complexity": false, // Enforces a threshold of cyclomatic complexity.
+		"deprecation": true, // Warns when deprecated APIs are used.
+		"eofline": true, // Ensures the file ends with a newline.
+		"indent": [true, "tabs", 4], // Enforces indentation with tabs or spaces.
+		"linebreak-style": [true, "LF"], // Enforces a consistent linebreak style.
+		"max-classes-per-file": [
+			true,
+			2,
+			"exclude-class-expressions"
+		], // A file may not contain more than the specified number of classes
+		// "max-file-line-count": 1000, // Requires files to remain under a certain number of lines
+		"max-line-length": false, // Requires lines to be under a certain max length.
+		"no-default-export": false, // Disallows default exports in ES6-style modules.
+		"no-default-import": false, // Disallows importing default members from certain ES6-style modules.
+		"no-duplicate-imports": true, // Disallows multiple import statements from the same module.
+		"no-mergeable-namespace": true, // Disallows mergeable namespaces in the same file.
+		"no-require-imports": true, // Disallows invocation of require().
+		"object-literal-sort-keys": false, // Checks ordering of keys in object literals. When using the default alphabetical ordering, additional blank lines may be used to group object properties together while keeping the elements within each group in alphabetical order.
+		"prefer-const": true, // Requires that variable declarations use const instead of let and var if possible.
+		"prefer-readonly": true, // Requires that private variables are marked as readonly if they’re never modified outside of the constructor.
+		"trailing-comma": [
+			true,
+			{
+				"multiline": "never",
+				"singleline": "never"
+			}
+		], // Requires or disallows trailing commas in array and object literals, destructuring assignments, function typings, named imports and exports and function parameters.
+
+		/////////////////////////////////////////////////////
+		////////////////        Style        ////////////////
+		/////////////////////////////////////////////////////
+		"align": false, // Enforces vertical alignment.
+		"array-type": [true, "array"], // Requires using either ‘T[]’ or ‘Array' for arrays.
+		"arrow-parens": true, // Requires parentheses around the parameters of arrow function definitions.
+		"arrow-return-shorthand": true, // Suggests to convert () => { return x; } to () => x.
+		"binary-expression-operand-order": false, // In a binary expression, a literal should always be on the right-hand side if possible. For example, prefer ‘x + 1’ over ‘1 + x’.
+		"callable-types": true, // An interface or literal type with just a call signature can be written as a function type.
+		"class-name": true, // Enforces PascalCased class and interface names.
+		"comment-format": [
+			true,
+			"check-space",
+			{
+				"ignore-words": ["TODO", "HACK"]
+			}
+		], // Enforces formatting rules for single-line comments.
+		"comment-type": false, // Allows a limited set of comment types
+		// "completed-docs": {}, // Enforces JSDoc comments for important items be filled out.
+		"encoding": true, // Enforces UTF-8 file encoding.
+		"file-header": false, // Enforces a certain header comment for all files, matched by a regular expression.
+		"file-name-casing": [true, "kebab-case"], // Enforces a consistent file naming convention
+		"import-spacing": true, // Ensures proper spacing between import statement keywords
+		"increment-decrement": true, // Enforces using explicit += 1 or -= 1 operators.
+		"interface-name": [true, "never-prefix"], // Requires interface names to begin with a capital ‘I’
+		"interface-over-type-literal": false, // Prefer an interface declaration over a type literal (type T = { ... })
+		"jsdoc-format": true, // Enforces basic format rules for JSDoc comments.
+		"match-default-export-name": false, // Requires that a default import have the same name as the declaration it imports. Does nothing for anonymous default exports.
+		"newline-before-return": true, // Enforces blank line before return when not the only line in the block.
+		"newline-per-chained-call": false, // Requires that chained method calls be broken apart onto separate lines.
+		"new-parens": true, // Requires parentheses when invoking a constructor via the new keyword.
+		"no-angle-bracket-type-assertion": true, // Requires the use of as Type for type assertions instead of <Type>.
+		"no-boolean-literal-compare": true, // Warns on comparison to a boolean literal, as in x === true.
+		"no-consecutive-blank-lines": [true, 1], // Disallows one or more blank lines in a row.
+		"no-irregular-whitespace": true, // Disallow irregular whitespace within a file, including strings and comments.
+		"no-parameter-properties": false, // Disallows parameter properties in class constructors.
+		"no-redundant-jsdoc": true, // Forbids JSDoc which duplicates TypeScript functionality.
+		"no-reference-import": true, // Don’t <reference types="foo" /> if you import foo anyway.
+		"no-trailing-whitespace": true, // Disallows trailing whitespace at the end of a line.
+		"no-unnecessary-callback-wrapper": true, // Replaces x => f(x) with just f. To catch more cases, enable only-arrow-functions and arrow-return-shorthand too.
+		"no-unnecessary-initializer": true, // Forbids a ‘var’/’let’ statement or destructuring initializer to be initialized to ‘undefined’.
+		"no-unnecessary-qualifier": true, // Warns when a namespace qualifier (A.x) is unnecessary.
+		"number-literal-format": true, // Checks that decimal literals should begin with ‘0.’ instead of just ‘.’, and should not end with a trailing ‘0’.
+		"object-literal-key-quotes": [true, "as-needed"], // Enforces consistent object literal property quote style.
+		"object-literal-shorthand": false, // Enforces/disallows use of ES6 object literal shorthand.
+		"one-line": [
+			true,
+			"check-catch",
+			"check-finally",
+			"check-else",
+			"check-open-brace",
+			"check-whitespace"
+		], // Requires the specified tokens to be on the same line as the expression preceding them.
+		"one-variable-per-declaration": true, // Disallows multiple variable definitions in the same declaration statement.
+		"ordered-imports": true, // Requires that import statements be alphabetized and grouped.
+		"prefer-function-over-method": [
+			true,
+			"allow-public",
+			"allow-protected"
+		], // Warns for class methods that do not use ‘this’.
+		"prefer-method-signature": true, // Prefer foo(): void over foo: () => void in interfaces and types.
+		"prefer-switch": true, // Prefer a switch statement to an if statement with simple === comparisons.
+		"prefer-template": true, // Prefer a template expression over string literal concatenation.
+		"prefer-while": true, // Prefer while loops instead of for loops without an initializer and incrementor.
+		"quotemark": [true, "backtick"], // Enforces quote character for string literals.
+		"return-undefined": true, // Prefer return; in void functions and return undefined; in value-returning functions.
+		"semicolon": [true, "never"], // Enforces consistent semicolon usage at the end of every statement.
+		"space-before-function-paren": [
+			true,
+			{
+				"anonymous": "never",
+				"named": "never",
+				"asyncArrow": "always",
+				"method": "never",
+				"constructor": "never"
+			}
+		], // Require or disallow a space before function parenthesis
+		"space-within-parens": [true, 0], // Enforces spaces within parentheses or disallow them. Empty parentheses () are always allowed.
+		"switch-final-break": [true, "never"], // Checks whether the final clause of a switch statement ends in break;.
+		"type-literal-delimiter": false, // Checks that type literal members are separated by semicolons. Enforces a trailing semicolon for multiline type literals.
+		"unnecessary-bind": true, // Prevents unnecessary and/or misleading scope bindings on functions.
+		"variable-name": [true, "ban-keywords", "check-format", "allow-leading-underscore", "allow-pascal-case"], // Checks variable names for various errors.
+		"whitespace": [
+			true,
+			"check-branch",
+			"check-decl",
+			"check-operator",
+			"check-module",
+			"check-separator",
+			"check-rest-spread",
+			"check-type",
+			"check-typecast",
+			"check-type-operator",
+			"check-preblock"
+		] // Enforces whitespace style conventions.
+	},
+    "rulesDirectory": []
+}

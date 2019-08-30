@@ -1,0 +1,24 @@
+{
+	"compilerOptions": {
+		"target": "ES2016",
+		"module": "commonjs",
+		"lib": ["es2016"],
+		"sourceMap": false,
+		"outDir": "./build",
+		"rootDir": "./src",
+		"baseUrl": ".",
+		"composite": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": false,
+		"moduleResolution": "node",
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"paths": { "*": ["src/types/*"] }
+	},
+	"include": ["src"],
+	"types": ["node"]
+}

@@ -1,0 +1,37 @@
+{
+	"name": "ynab-helper",
+    "version": "0.0.1",
+    "description": "A script that enables you to rollover your negative balances in [YNAB](https://www.youneedabudget.com).",
+	"main": "build/index.js",
+	"scripts": {
+		"build": "tsc",
+		"bump-version-numbers": "npm run script bump-version-numbers.ts",
+		"lint": "tslint --project .",
+		"postbuild": "copyfiles --up 1 './src/**/*.token' ./build",
+		"prestart": "npm run build",
+		"script": "cd scripts && ts-node",
+		"setup-webhook": "ts-node scripts/setup-webhook.ts",
+		"start": "node .",
+		"watch-success-script": "npm run postbuild; node .",
+		"watch": "tsc-watch --project . --onSuccess 'npm --loglevel=silent run watch-success-script'"
+	},
+	"author": "Eric Ferreira <2483476+ericbf@users.noreply.github.com>",
+	"license": "MIT",
+	"private": true,
+	"devDependencies": {
+		"@types/app-root-path": "^1.2.4",
+		"@types/stack-trace": "0.0.29",
+		"copyfiles": "^2.1.1",
+		"ts-node": "^8.3.0",
+		"tsc-watch": "^2.4.0",
+		"tslint": "^5.18.0",
+		"typescript": "^3.5.3"
+	},
+	"dependencies": {
+		"@types/node": "^12.7.3",
+		"app-root-path": "^2.2.1",
+		"node-persist": "^3.0.5",
+		"stack-trace": "0.0.10",
+		"ynab": "^1.16.0"
+	}
+}
