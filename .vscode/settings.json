@@ -1,0 +1,5 @@
+{
+	"editor.snippetSuggestions": "bottom",
+	"emmet.showSuggestionsAsSnippets": true,
+	"editor.suggest.shareSuggestSelections": true
+}

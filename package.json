@@ -1,6 +1,6 @@
 {
 	"name": "ynab-helper",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "A script that enables you to rollover your negative balances in [YNAB](https://www.youneedabudget.com).",
 	"main": "build/index.js",
 	"scripts": {

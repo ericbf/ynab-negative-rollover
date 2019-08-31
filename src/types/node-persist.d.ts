@@ -19,13 +19,13 @@ declare module "node-persist" {
 	function create(options?: InitOptions): typeof persist
 
 	async function init(options?: InitOptions): Promise<void>
-	async function getItem<T>(key: string): Promise<T | undefined>
-	async function setItem<T>(key: string, value: T, options?: SetOptions): Promise<void>
-	async function updateItem<T>(key: string, value: T, options?: SetOptions): Promise<void>
-	async function deleteItem<T>(key: string): Promise<void>
+	async function getItem<T = any>(key: string): Promise<T | undefined>
+	async function setItem<T = any>(key: string, value: T, options?: SetOptions): Promise<void>
+	async function updateItem<T = any>(key: string, value: T, options?: SetOptions): Promise<void>
+	async function removeItem<T = any>(key: string): Promise<void>
 	async function clear(): Promise<void>
-	async function values<T>(): Promise<T[]>
-	async function valuesWithKeyMatch<T>(keyMatch: string | RegExp): Promise<T[]>
+	async function values<T = any>(): Promise<T[]>
+	async function valuesWithKeyMatch<T = any>(keyMatch: string | RegExp): Promise<T[]>
 	async function keys(): Promise<string[]>
 	async function length(): Promise<number>
 }

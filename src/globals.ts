@@ -1,4 +1,4 @@
-import { NonOptional, Stringlike } from "./helpers/types"
+import { NonOptional, Stringlike } from "./types"
 
 declare global {
 	/**
@@ -30,6 +30,10 @@ declare global {
 		filter(loose?: false): NonNullable<T>[]
 		/** Filter out all falsey items. */
 		filter(loose: true): NonOptional<T>[]
+		/** Find an item that matches this predicate, remove it from the array, and return it. */
+		findAndRemove<This = void>(predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T | undefined
+		/** Find all items that matches this predicate, remove them from the array, and return them. */
+		filterAndRemove<This = void>(predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T[]
 	}
 }
 
@@ -89,6 +93,34 @@ Object.defineProperty(Promise, `wait`, {
 				} else {
 					this[this.length - 1] = value
 				}
+			},
+			enumerable: false,
+			configurable: true
+		},
+		findAndRemove: {
+			value<T, This = void>(this: T[], predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T | undefined {
+				const index = this.findIndex(predicate, thisArg)
+
+				if (index >= 0) {
+					return this.splice(index, 1)[0]
+				}
+
+				return undefined
+			},
+			enumerable: false,
+			configurable: true
+		},
+		filterAndRemove: {
+			value<T, This = void>(this: T[], predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T[] {
+				const matches: T[] = []
+
+				for (let i = this.length - 1; i >= 0; i -= 1) {
+					if (predicate.call(thisArg!, this[i], i, this)) {
+						matches.unshift(this.splice(i, 1)[0])
+					}
+				}
+
+				return matches
 			},
 			enumerable: false,
 			configurable: true
