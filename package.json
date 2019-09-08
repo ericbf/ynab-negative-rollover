@@ -1,6 +1,6 @@
 {
 	"name": "ynab-helper",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "A script that enables you to rollover your negative balances in [YNAB](https://www.youneedabudget.com).",
 	"main": "build/index.js",
 	"scripts": {
@@ -8,9 +8,9 @@
 		"bump-version-numbers": "npm run script bump-version-numbers.ts",
 		"lint": "tslint --project .",
 		"postbuild": "copyfiles --up 1 './src/**/*.token' ./build",
-		"prestart": "npm run build",
 		"script": "cd scripts && ts-node",
 		"setup-webhook": "ts-node scripts/setup-webhook.ts",
+		"prestart": "npm run build",
 		"start": "node .",
 		"watch-success-script": "npm run postbuild; node .",
 		"watch": "tsc-watch --project . --onSuccess 'npm --loglevel=silent run watch-success-script'"

@@ -30,23 +30,29 @@ export function reduceByProp<K extends keyof T, T extends { [Key in K]: string }
  */
 export async function prompt(question: string, matching = /.?/, retry = `Try again. ${question}`): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
-		process.stdin.resume()
-		process.stdout.write(question)
-
 		// tslint:disable-next-line: no-any
-		const resolver = (data: any) => {
-			process.off(`data`, resolver)
+		const resolver = (data: Buffer) => {
+			off()
 			resolve(data.toString().trim())
 		}
 
 		// tslint:disable-next-line: no-any
 		const errorer = (error: any) => {
-			process.stdin.off(`error`, errorer)
+			off()
 			reject(error)
 		}
 
+		const off = () => {
+			process.stdin.pause()
+			process.stdin.off(`data`, resolver)
+			process.stdin.off(`error`, reject)
+		}
+
+		process.stdout.write(question)
+
+		process.stdin.resume()
 		process.stdin.on(`data`, resolver)
-		process.stdin.on(`error`, reject)
+		process.stdin.on(`error`, errorer)
 	}).then((data) => {
 		if (!matching.test(data)) {
 			return prompt(retry, matching, retry)

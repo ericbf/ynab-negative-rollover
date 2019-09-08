@@ -65,8 +65,8 @@ Type a number (q to quit): `,
 		case `3`:
 			return clearDb()
 		default:
-			return
+			return undefined
 	}
 }
 
-module.exports = run().catch((e) => error(`Error: ${e.message || e}`))
+module.exports = run()

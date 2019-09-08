@@ -118,6 +118,7 @@ export async function applyRollovers() {
 					categories: budgetMonthData.data.month.categories.filter(
 						(c) =>
 							!c.deleted &&
+							c.category_group_id !== paymentsGroupId &&
 							c.original_category_group_id !== paymentsGroupId &&
 							c.name !== `To be Budgeted`
 					),
@@ -169,6 +170,17 @@ export async function applyRollovers() {
 
 		// Let's calculate values for the current month
 		for (const { id, balance, name } of byMonth[currentMonth]!.categories) {
+			if (!previousSet[id]) {
+				// A category was created, so let's set the initial previous value.
+				previousSet[id] = {
+					name,
+					balance: 0,
+					existing: 0,
+					adjustment: 0,
+					newBalance: 0
+				}
+			}
+
 			const { balance: previousBalance, newBalance: previousNewBalance } = previousSet[id]
 
 			const adjustment = previousNewBalance < 0 ? previousNewBalance : 0
@@ -265,25 +277,29 @@ export async function applyRollovers() {
 	if (create.length > 0) {
 		log(`Creating ${create.length} rollover transaction${create.length === 1 ? `` : `s`}.`)
 
-		promises.push(
-			api.transactions
-				.createTransactions(BudgetValue.budget, {
-					transactions: create
-				})
-				.then(() => log(`Done creating.`))
-		)
+		if (!debug) {
+			promises.push(
+				api.transactions
+					.createTransactions(BudgetValue.budget, {
+						transactions: create
+					})
+					.then(() => log(`Done creating.`))
+			)
+		}
 	}
 
 	if (update.length > 0) {
 		log(`Updating ${update.length} rollover transaction${update.length === 1 ? `` : `s`}.`)
 
-		promises.push(
-			api.transactions
-				.updateTransactions(BudgetValue.budget, {
-					transactions: update
-				})
-				.then(() => log(`Done updating.`))
-		)
+		if (!debug) {
+			promises.push(
+				api.transactions
+					.updateTransactions(BudgetValue.budget, {
+						transactions: update
+					})
+					.then(() => log(`Done updating.`))
+			)
+		}
 	}
 
 	if (promises.length > 0) {
