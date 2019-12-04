@@ -1,54 +1,66 @@
 import * as ynab from "ynab"
 
-import { error, getMonth, log, reduceByProp } from "../helpers"
+import { asTuple, error, getMonth, log, reduceByProp } from "../helpers"
 import { api, BudgetName, debug, Storage, StorageKey } from "../index"
 
 export async function applyRollovers() {
 	const storage = await Storage
 
-	const accountId = await storage.getItem<string>(StorageKey.account).then(async (id) => {
-		if (id) {
-			return id
-		}
+	const rolloverAccountId = await storage
+		.getItem<string>(StorageKey.account + BudgetName.budget + BudgetName.rolloverAccount)
+		.then(async (id) => {
+			if (id) {
+				return id
+			}
 
-		const accounts = await api.accounts.getAccounts(BudgetName.budget)
-		const account = accounts.data.accounts.find(
-			(a) => a.name === BudgetName.rolloverPayee
+			const accounts = await api.accounts.getAccounts(BudgetName.budget)
+			const account = accounts.data.accounts.find(
+				(a) => a.name === BudgetName.rolloverAccount
+			)
+
+			if (!account) {
+				throw new Error(
+					`Rollover account was not found. Please create an account called "${BudgetName.rolloverAccount}".`
+				)
+			}
+
+			const value = account.id
+
+			await storage.setItem(StorageKey.account, value)
+
+			return value
+		})
+
+	const rolloverPayeeId = await storage
+		.getItem<string>(StorageKey.payee + BudgetName.budget + BudgetName.rolloverPayee)
+		.then(async (id) => {
+			if (id) {
+				return id
+			}
+
+			const payees = await api.payees.getPayees(BudgetName.budget)
+			const payee = payees.data.payees.find((a) => a.name === BudgetName.rolloverPayee)
+
+			if (!payee) {
+				throw new Error(
+					`Rollover payee was not found. Please create a payee called "${BudgetName.rolloverPayee}"`
+				)
+			}
+
+			const value = payee.id
+
+			await storage.setItem(StorageKey.payee, value)
+
+			return value
+		})
+
+	const [paymentsGroupId, rolloverCategoryId] = await storage
+		.getItem<[string | undefined, string]>(
+			StorageKey.paymentsGroupAndRolloverCategory +
+				BudgetName.budget +
+				BudgetName.rolloverCategory
 		)
-
-		if (!account) {
-			throw new Error(`The target account was not found.`)
-		}
-
-		const value = account.id
-
-		await storage.setItem(StorageKey.account, value)
-
-		return value
-	})
-
-	const payeeId = await storage.getItem<string>(StorageKey.payee).then(async (id) => {
-		if (id) {
-			return id
-		}
-
-		const payees = await api.payees.getPayees(BudgetName.budget)
-		const payee = payees.data.payees.find((a) => a.name === BudgetName.rolloverPayee)
-
-		if (!payee) {
-			throw new Error(`No rollover payee found.`)
-		}
-
-		const value = payee.id
-
-		await storage.setItem(StorageKey.payee, value)
-
-		return value
-	})
-
-	const [paymentsGroupId, rolloverId] = await storage
-		.getItem<[string, string]>(StorageKey.paymentsGroupAndRolloverCategory)
-		.then(async (ids) => {
+		.then<[string | undefined, string]>(async (ids) => {
 			if (ids) {
 				return ids
 			}
@@ -65,22 +77,28 @@ export async function applyRollovers() {
 				return next.categories.find((c) => c.name === BudgetName.rolloverCategory)
 			}, undefined)
 
-			if (!group || !rollover) {
-				throw new Error(
-					`Payments account group ${group} or rollover category ${rollover} not found.`
+			if (!group) {
+				log(
+					`Didn't find a Credit Card Payments group. Do you not have any credit cards set up? If you do has any credit card accounts set up, please report this.`
 				)
 			}
 
-			const values = [group.id, rollover.id]
+			if (!rollover) {
+				throw new Error(
+					`Rollover category was not found. Please create a budget category called "${BudgetName.rolloverCategory}".`
+				)
+			}
+
+			const values = asTuple([group && group.id, rollover.id])
 
 			await storage.setItem(StorageKey.paymentsGroupAndRolloverCategory, values)
 
 			return values
 		})
 
-	if (!accountId || !payeeId || !paymentsGroupId || !rolloverId) {
+	if (!rolloverAccountId || !rolloverPayeeId || !rolloverCategoryId) {
 		error(
-			`Failed to get account (${accountId}), payee ${payeeId}, payments group ${paymentsGroupId}, or rollover category ID ${rolloverId}.`
+			`Failed to fetch rollover account (${rolloverAccountId}), rollover payee ${rolloverPayeeId}, or rollover category ID ${rolloverCategoryId}. Please clear the cache.`
 		)
 
 		process.exit(-1)
@@ -101,7 +119,7 @@ export async function applyRollovers() {
 		cachedTransactions ||
 		(await api.transactions.getTransactionsByPayee(
 			BudgetName.budget,
-			payeeId,
+			rolloverPayeeId,
 			getMonth(0)
 		))
 
@@ -115,7 +133,9 @@ export async function applyRollovers() {
 
 	const rolloverTransactionsByMonth = reduceByProp(
 		`date`,
-		allExistingRolloverTransactions.filterAndRemove((t) => t.category_id === rolloverId)
+		allExistingRolloverTransactions.filterAndRemove(
+			(t) => t.category_id === rolloverCategoryId
+		)
 	)
 	const byMonth = reduceByProp(
 		`month`,
@@ -137,9 +157,9 @@ export async function applyRollovers() {
 					categories: budgetMonthData.data.month.categories.filter(
 						(c) =>
 							!c.deleted &&
+							c.name !== BudgetName.rolloverCategory &&
 							c.category_group_id !== paymentsGroupId &&
-							c.original_category_group_id !== paymentsGroupId &&
-							c.name !== BudgetName.rolloverCategory
+							c.original_category_group_id !== paymentsGroupId
 					),
 					transactions: reduceByProp(
 						`category_id`,
@@ -247,13 +267,13 @@ export async function applyRollovers() {
 			log(`Adding adjustment for ${name} of ${adjustment / 1000} in ${month}`)
 
 			const transaction = {
-				account_id: accountId,
+				account_id: rolloverAccountId,
 				category_id: categoryId,
 				amount: adjustment,
 				approved: true,
 				cleared: ynab.SaveTransaction.ClearedEnum.Cleared,
 				date: month,
-				payee_id: payeeId
+				payee_id: rolloverPayeeId
 			}
 
 			const existingAdjustment = byMonth[month]!.transactions[categoryId]
@@ -271,7 +291,7 @@ export async function applyRollovers() {
 		if (presentMonth === month) {
 			promises.push(
 				api.categories
-					.getMonthCategoryById(BudgetName.budget, presentMonth, rolloverId)
+					.getMonthCategoryById(BudgetName.budget, presentMonth, rolloverCategoryId)
 					.then(
 						({
 							data: {
@@ -280,9 +300,14 @@ export async function applyRollovers() {
 						}) => {
 							if (balance !== totalAdjustment) {
 								return api.categories
-									.updateMonthCategory(BudgetName.budget, presentMonth, rolloverId, {
-										category: { budgeted: totalAdjustment - balance + budgeted }
-									})
+									.updateMonthCategory(
+										BudgetName.budget,
+										presentMonth,
+										rolloverCategoryId,
+										{
+											category: { budgeted: totalAdjustment - balance + budgeted }
+										}
+									)
 									.then(() =>
 										log(`Updated ${BudgetName.rolloverCategory} budgeted amount.`)
 									)
@@ -295,13 +320,13 @@ export async function applyRollovers() {
 		}
 
 		const rolloverTransaction = {
-			account_id: accountId,
-			category_id: rolloverId,
+			account_id: rolloverAccountId,
+			category_id: rolloverCategoryId,
 			amount: totalAdjustment,
 			approved: true,
 			cleared: ynab.UpdateTransaction.ClearedEnum.Cleared,
 			date: month,
-			payee_id: payeeId
+			payee_id: rolloverPayeeId
 		}
 
 		const existingRollover = rolloverTransactionsByMonth[month]

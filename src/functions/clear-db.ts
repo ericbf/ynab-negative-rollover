@@ -1,6 +1,6 @@
 import { Storage } from "../index"
 
-export async function clearDb() {
+export async function clearCache() {
 	const storage = await Storage
 
 	return storage.clear()

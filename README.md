@@ -14,7 +14,13 @@ You should create a payee called `Budget Rollover`, an account called `Budget Ro
 
 ### Parameters
 
+You can pass parameters in the command line when running this. This is like standard parameters – for `*sh`, you can do something like `TOKEN=abcdefg BUDGET_NAME="Secondary" npm run start`. If you run this with different a different budget name, then revert to the default, you may have to clear the cache to get it to point to the right budget.
+
 `TOKEN`: your YNAB API token. This can also be added in an `index.token` file at the root of `src`.
+`BUDGET_NAME`: the name of the budget that you want to apply this to. Defaults to `"last-used"`.
+`ROLLOVER_PAYEE`: the payee to use for the rollover transactions. Defaults to `"Budget Rollover"`
+`ROLLOVER_ACCOUNT`: the account to use for the rollover transactions. Defaults to `"Budget Rollover"`
+`ROLLOVER_CATEGORY`: the category to use for the rollover transactions. Defaults to `"Rollover Offset"`
 
 ## Running the app
 

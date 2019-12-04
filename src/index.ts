@@ -5,7 +5,7 @@ import storage from "node-persist"
 import path from "path"
 import * as ynab from "ynab"
 
-import { applyRollovers, clearDb, zeroOutRollovers } from "./functions"
+import { applyRollovers, clearCache, zeroOutRollovers } from "./functions"
 import { error, prompt } from "./helpers"
 
 // This is the access token if we need it.
@@ -45,12 +45,13 @@ export enum StorageKey {
 	paymentsGroupAndRolloverCategory = "paymentsGroupAndRolloverCategory"
 }
 
-export enum BudgetName {
-	budget = "last-used",
-	rolloverPayee = "Budget Rollover",
-	rolloverCategory = "Rollover Offset",
-	creditCardPayments = "Credit Card Payments"
-}
+export const BudgetName = {
+	budget: process.env.BUDGET_NAME || `last-used`,
+	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget Rollover`,
+	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget Rollover`,
+	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover Offset`,
+	creditCardPayments: `Credit Card Payments`
+} as const
 
 async function run() {
 	// tslint:disable-next-line: no-unnecessary-type-assertion
@@ -58,7 +59,7 @@ async function run() {
 		`Which would you like?
     1. Apply rollover transactions.
     2. Zero out rollover transactions.
-    3. Clear data base.
+    3. Clear cache.
 Type a number (q to quit): `,
 		/[123q]/i
 	)) as `1` | `2` | `3` | `q` | `Q`
@@ -69,7 +70,7 @@ Type a number (q to quit): `,
 		case `2`:
 			return zeroOutRollovers()
 		case `3`:
-			return clearDb()
+			return clearCache()
 		default:
 			return undefined
 	}
