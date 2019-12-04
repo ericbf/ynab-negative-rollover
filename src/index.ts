@@ -9,7 +9,7 @@ import { applyRollovers, clearDb, zeroOutRollovers } from "./functions"
 import { error, prompt } from "./helpers"
 
 // This is the access token if we need it.
-export let token = process.env.TOKEN! && process.env.TOKEN!.trim()
+export let token = process.env.TOKEN && process.env.TOKEN.trim()
 
 /** Whether we are currently debugging */
 export const debug = false
@@ -22,27 +22,33 @@ if (!token) {
 	} catch {}
 
 	if (!token) {
-		error(`No access token passed in ENV or token file. We won't be able talk with the API.`)
+		error(
+			`No access token passed in ENV or token file. We won't be able talk with the API.`
+		)
 
-		process.exit(-1)
+		throw new Error(
+			`No access token passed in ENV or token file. We won't be able talk with the API.`
+		)
 	}
 }
 
 export const api = new ynab.API(token)
 
 /** The directory for the db. */
-export const Storage = storage.init({ dir: path.join(__dirname, `db`) }).then(() => storage)
+export const Storage = storage
+	.init({ dir: path.join(__dirname, `db`) })
+	.then(() => storage)
 
 export enum StorageKey {
 	account = "account",
 	payee = "payee",
-	groupAndTbb = "groupAndTbb"
+	paymentsGroupAndRolloverCategory = "paymentsGroupAndRolloverCategory"
 }
 
-export enum BudgetValue {
+export enum BudgetName {
 	budget = "last-used",
-	toBeBudgeted = "To be Budgeted",
-	budgetRollover = "Budget Rollover",
+	rolloverPayee = "Budget Rollover",
+	rolloverCategory = "Rollover Offset",
 	creditCardPayments = "Credit Card Payments"
 }
 
@@ -69,4 +75,6 @@ Type a number (q to quit): `,
 	}
 }
 
-module.exports = run()
+module.exports = run().catch((err) =>
+	error(`An exception was thrown: ${err.message || err}`)
+)

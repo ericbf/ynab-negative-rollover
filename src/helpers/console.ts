@@ -24,8 +24,16 @@ export function make<T extends ConsoleMethods>(which: T, stackLevel: number): Co
  * @param prefix The prefix to add to the message.
  * @param stackLevel The stack depth to go to. Defaults to `1`.
  */
-export function make<T extends ConsoleMethods>(which: T, prefix?: string, stackLevel?: number): Console[T]
-export function make<T extends ConsoleMethods>(which: T, prefix: string | number = which, stackLevel = 1): Console[T] {
+export function make<T extends ConsoleMethods>(
+	which: T,
+	prefix?: string,
+	stackLevel?: number
+): Console[T]
+export function make<T extends ConsoleMethods>(
+	which: T,
+	prefix: string | number = which,
+	stackLevel = 1
+): Console[T] {
 	if (typeof prefix === `number`) {
 		stackLevel = prefix
 		prefix = which

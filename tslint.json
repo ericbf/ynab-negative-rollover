@@ -1,9 +1,7 @@
 {
-    "defaultSeverity": "error",
-    "extends": [
-        "tslint:recommended"
-    ],
-    "jsRules": {},
+	"defaultSeverity": "error",
+	"extends": ["tslint:recommended"],
+	"jsRules": {},
 	"rules": {
 		/////////////////////////////////////////////////////////////////////////////
 		///////////////////////////    Tslint Built-In    ///////////////////////////
@@ -93,7 +91,7 @@
 			{
 				"name": "$",
 				"message": "Don't. Just don't..."
-            },
+			},
 			["describe", "only"],
 			{
 				"name": ["it", "only"],
@@ -155,10 +153,7 @@
 		// "no-unused-variable": true, // Disallows unused imports, variables, functions and private class members. Similar to tsc’s –noUnusedParameters and –noUnusedLocals options, but does not interrupt code compilation.
 		// "no-use-before-declare": true, //Disallows usage of variables before their declaration.
 		"no-var-keyword": true, // Disallows usage of the var keyword.
-		"no-void-expression": [
-			true,
-			"ignore-arrow-function-shorthand"
-		], // Requires expressions of type void to appear in statement position.
+		"no-void-expression": [true, "ignore-arrow-function-shorthand"], // Requires expressions of type void to appear in statement position.
 		"prefer-conditional-expression": true, // Recommends to use a conditional expression instead of assigning to the same thing in each branch of an if statement.
 		"prefer-object-spread": true, // Enforces the use of the ES2018 object spread operator over Object.assign() where appropriate.
 		"radix": true, // Requires the radix parameter to be specified when calling parseInt.
@@ -180,11 +175,7 @@
 		"eofline": true, // Ensures the file ends with a newline.
 		"indent": [true, "tabs", 4], // Enforces indentation with tabs or spaces.
 		"linebreak-style": [true, "LF"], // Enforces a consistent linebreak style.
-		"max-classes-per-file": [
-			true,
-			2,
-			"exclude-class-expressions"
-		], // A file may not contain more than the specified number of classes
+		"max-classes-per-file": [true, 2, "exclude-class-expressions"], // A file may not contain more than the specified number of classes
 		// "max-file-line-count": 1000, // Requires files to remain under a certain number of lines
 		"max-line-length": false, // Requires lines to be under a certain max length.
 		"no-default-export": false, // Disallows default exports in ES6-style modules.
@@ -258,11 +249,7 @@
 		], // Requires the specified tokens to be on the same line as the expression preceding them.
 		"one-variable-per-declaration": true, // Disallows multiple variable definitions in the same declaration statement.
 		"ordered-imports": true, // Requires that import statements be alphabetized and grouped.
-		"prefer-function-over-method": [
-			true,
-			"allow-public",
-			"allow-protected"
-		], // Warns for class methods that do not use ‘this’.
+		"prefer-function-over-method": [true, "allow-public", "allow-protected"], // Warns for class methods that do not use ‘this’.
 		"prefer-method-signature": true, // Prefer foo(): void over foo: () => void in interfaces and types.
 		"prefer-switch": true, // Prefer a switch statement to an if statement with simple === comparisons.
 		"prefer-template": true, // Prefer a template expression over string literal concatenation.
@@ -284,7 +271,13 @@
 		"switch-final-break": [true, "never"], // Checks whether the final clause of a switch statement ends in break;.
 		"type-literal-delimiter": false, // Checks that type literal members are separated by semicolons. Enforces a trailing semicolon for multiline type literals.
 		"unnecessary-bind": true, // Prevents unnecessary and/or misleading scope bindings on functions.
-		"variable-name": [true, "ban-keywords", "check-format", "allow-leading-underscore", "allow-pascal-case"], // Checks variable names for various errors.
+		"variable-name": [
+			true,
+			"ban-keywords",
+			"check-format",
+			"allow-leading-underscore",
+			"allow-pascal-case"
+		], // Checks variable names for various errors.
 		"whitespace": [
 			true,
 			"check-branch",
@@ -299,5 +292,5 @@
 			"check-preblock"
 		] // Enforces whitespace style conventions.
 	},
-    "rulesDirectory": []
+	"rulesDirectory": []
 }

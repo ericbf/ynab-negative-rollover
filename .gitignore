@@ -1,12 +1,11 @@
 ### Custom ###
 # Built stuff
 build/
-data/
 *.tsbuildinfo
 *.token
 
-# Created by https://www.gitignore.io/api/node,macos,windows
-# Edit at https://www.gitignore.io/?templates=node,macos,windows
+# Created by https://www.gitignore.io/api/node,macos,windows,visualstudiocode
+# Edit at https://www.gitignore.io/?templates=node,macos,windows,visualstudiocode
 
 ### macOS ###
 # General
@@ -114,6 +113,9 @@ typings/
 # nuxt.js build output
 .nuxt
 
+# react / gatsby
+public/
+
 # vuepress build output
 .vuepress/dist
 
@@ -125,6 +127,16 @@ typings/
 
 # DynamoDB Local files
 .dynamodb/
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
 
 ### Windows ###
 # Windows thumbnail cache files
@@ -152,4 +164,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.gitignore.io/api/node,macos,windows
+# End of https://www.gitignore.io/api/node,macos,windows,visualstudiocode

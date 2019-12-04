@@ -17,7 +17,12 @@
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
-		"paths": { "*": ["src/types/*"], "@src": ["src"], "@src/": ["src/"], "@src/*": ["src/*"] }
+		"paths": {
+			"*": ["src/types/*"],
+			"@src": ["src"],
+			"@src/": ["src/"],
+			"@src/*": ["src/*"]
+		}
 	},
 	"include": ["src"],
 	"types": ["node"]

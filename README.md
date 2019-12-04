@@ -1,6 +1,6 @@
-# YNAB Helper
+# YNAB Negative Rollover
 
-A script that enables you to rollover your negative balances in [YNAB](https://www.youneedabudget.com). I've contacted YNAB support multiple times to support this natively, and they basically said they don't want to (stupid!), so I did it myself using their [API](https://api.youneedabudget.com). It's hacky, but it works for us. The one downside that I don't really have a workaround for is that it messes up the "activity" total for a category with a rollover amount, as the rollover amount in rendered as a transaction.
+A script that enables you to rollover your negative balances in [YNAB](https://www.youneedabudget.com). I've contacted YNAB support multiple times to support this natively – they basically said they don't want to (stupid!). So I did it myself using their [API](https://api.youneedabudget.com). It's hacky, but it works for my family. The one downside that I don't really have a workaround for is that it messes up the "activity" total for a category with a rollover amount, as the rollover amount is rendered as a transaction.
 
 ## Dependencies
 
@@ -8,7 +8,9 @@ This only has a global dependency on [`node`](http://nodejs.org).
 
 ## Initializing the app
 
-To install local dependencies, run `npm i`. Make sure you are providing the app your API token, otherwise it will not work. You also need to have created a payee called `Budget Rollover` and a category called `Rollover Offset`. You can hide this category after creating it.
+To install local dependencies, run `npm i`. Make sure you are providing the app your API token, otherwise it will not work.
+
+You should create a payee called `Budget Rollover`, an account called `Budget Rollover`, and a category called `Rollover Offset`. You can set the inital balance of the account to zero and close it right away, and you can also hide the category after creating it.
 
 ### Parameters
 

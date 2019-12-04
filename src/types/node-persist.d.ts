@@ -20,8 +20,16 @@ declare module "node-persist" {
 
 	async function init(options?: InitOptions): Promise<void>
 	async function getItem<T = any>(key: string): Promise<T | undefined>
-	async function setItem<T = any>(key: string, value: T, options?: SetOptions): Promise<void>
-	async function updateItem<T = any>(key: string, value: T, options?: SetOptions): Promise<void>
+	async function setItem<T = any>(
+		key: string,
+		value: T,
+		options?: SetOptions
+	): Promise<void>
+	async function updateItem<T = any>(
+		key: string,
+		value: T,
+		options?: SetOptions
+	): Promise<void>
 	async function removeItem<T = any>(key: string): Promise<void>
 	async function clear(): Promise<void>
 	async function values<T = any>(): Promise<T[]>

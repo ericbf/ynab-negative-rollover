@@ -1,2 +1,2 @@
-export * from './console'
-export * from './functions'
+export * from "./console"
+export * from "./functions"

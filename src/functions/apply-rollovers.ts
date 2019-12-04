@@ -1,7 +1,7 @@
 import * as ynab from "ynab"
 
 import { error, getMonth, log, reduceByProp } from "../helpers"
-import { api, BudgetValue, debug, Storage, StorageKey } from "../index"
+import { api, BudgetName, debug, Storage, StorageKey } from "../index"
 
 export async function applyRollovers() {
 	const storage = await Storage
@@ -11,16 +11,20 @@ export async function applyRollovers() {
 			return id
 		}
 
-		const accounts = await api.accounts.getAccounts(BudgetValue.budget)
-		const account = accounts.data.accounts.find((a) => a.name === BudgetValue.budgetRollover)
+		const accounts = await api.accounts.getAccounts(BudgetName.budget)
+		const account = accounts.data.accounts.find(
+			(a) => a.name === BudgetName.rolloverPayee
+		)
 
 		if (!account) {
 			throw new Error(`The target account was not found.`)
 		}
 
-		await storage.setItem(StorageKey.account, account.id)
+		const value = account.id
 
-		return account.id
+		await storage.setItem(StorageKey.account, value)
+
+		return value
 	})
 
 	const payeeId = await storage.getItem<string>(StorageKey.payee).then(async (id) => {
@@ -28,49 +32,55 @@ export async function applyRollovers() {
 			return id
 		}
 
-		const payees = await api.payees.getPayees(BudgetValue.budget)
-		const payee = payees.data.payees.find((a) => a.name === BudgetValue.budgetRollover)
+		const payees = await api.payees.getPayees(BudgetName.budget)
+		const payee = payees.data.payees.find((a) => a.name === BudgetName.rolloverPayee)
 
 		if (!payee) {
 			throw new Error(`No rollover payee found.`)
 		}
 
-		await storage.setItem(StorageKey.payee, payee.id)
+		const value = payee.id
 
-		return payee.id
+		await storage.setItem(StorageKey.payee, value)
+
+		return value
 	})
 
-	const [paymentsGroupId, tbbCategoryId] = await storage
-		.getItem<[string, string]>(StorageKey.groupAndTbb)
+	const [paymentsGroupId, rolloverId] = await storage
+		.getItem<[string, string]>(StorageKey.paymentsGroupAndRolloverCategory)
 		.then(async (ids) => {
 			if (ids) {
 				return ids
 			}
 
-			const groupsData = await api.categories.getCategories(BudgetValue.budget)
+			const groupsData = await api.categories.getCategories(BudgetName.budget)
 			const groups = groupsData.data.category_groups
 
-			const group = groups.find((g) => g.name === BudgetValue.creditCardPayments)
-			const tbb = groups.reduce<ynab.Category | undefined>((trans, next) => {
+			const group = groups.find((g) => g.name === BudgetName.creditCardPayments)
+			const rollover = groups.reduce<ynab.Category | undefined>((trans, next) => {
 				if (trans) {
 					return trans
 				}
 
-				return next.categories.find((c) => c.name === BudgetValue.toBeBudgeted)
+				return next.categories.find((c) => c.name === BudgetName.rolloverCategory)
 			}, undefined)
 
-			if (!group || !tbb) {
-				throw new Error(`Payments account group or tbb category not found.`)
+			if (!group || !rollover) {
+				throw new Error(
+					`Payments account group ${group} or rollover category ${rollover} not found.`
+				)
 			}
 
-			await storage.setItem(StorageKey.groupAndTbb, [group.id, tbb.id])
+			const values = [group.id, rollover.id]
 
-			return [group.id, tbb.id]
+			await storage.setItem(StorageKey.paymentsGroupAndRolloverCategory, values)
+
+			return values
 		})
 
-	if (!accountId || !payeeId || !paymentsGroupId || !tbbCategoryId) {
+	if (!accountId || !payeeId || !paymentsGroupId || !rolloverId) {
 		error(
-			`Failed to get account (${accountId}), payee ${payeeId}, payments group ${paymentsGroupId}, or tbb category ID ${tbbCategoryId}.`
+			`Failed to get account (${accountId}), payee ${payeeId}, payments group ${paymentsGroupId}, or rollover category ID ${rolloverId}.`
 		)
 
 		process.exit(-1)
@@ -80,13 +90,20 @@ export async function applyRollovers() {
 	const start = new Date(`${startYear}-01-01`)
 	const end = new Date()
 	const delta =
-		end.getFullYear() * 12 + end.getMonth() - (start.getFullYear() * 12 + start.getMonth())
+		end.getFullYear() * 12 +
+		end.getMonth() -
+		(start.getFullYear() * 12 + start.getMonth())
+	const presentMonth = getMonth(0, end.getFullYear(), end.getMonth())
 
 	const cachedTransactions =
 		debug && (await storage.getItem<ynab.HybridTransactionsResponse>(`transactions`))
 	const transationsData =
 		cachedTransactions ||
-		(await api.transactions.getTransactionsByPayee(BudgetValue.budget, payeeId, getMonth(0)))
+		(await api.transactions.getTransactionsByPayee(
+			BudgetName.budget,
+			payeeId,
+			getMonth(0)
+		))
 
 	if (!cachedTransactions) {
 		await storage.setItem(`transactions`, transationsData)
@@ -96,9 +113,9 @@ export async function applyRollovers() {
 
 	type TransactionWithCategory = ynab.HybridTransaction & { category_id: string }
 
-	const tbbTransactionsByMonth = reduceByProp(
+	const rolloverTransactionsByMonth = reduceByProp(
 		`date`,
-		allExistingRolloverTransactions.filterAndRemove((t) => t.category_id === tbbCategoryId)
+		allExistingRolloverTransactions.filterAndRemove((t) => t.category_id === rolloverId)
 	)
 	const byMonth = reduceByProp(
 		`month`,
@@ -106,8 +123,10 @@ export async function applyRollovers() {
 			Array.from({ length: delta + 1 }).map(async (_, i) => {
 				const lastMonth = getMonth(i - 1)
 
-				const cachedMonth = debug && (await storage.getItem<ynab.MonthDetailResponse>(lastMonth))
-				const budgetMonthData = cachedMonth || (await api.months.getBudgetMonth(BudgetValue.budget, lastMonth))
+				const cachedMonth =
+					debug && (await storage.getItem<ynab.MonthDetailResponse>(lastMonth))
+				const budgetMonthData =
+					cachedMonth || (await api.months.getBudgetMonth(BudgetName.budget, lastMonth))
 
 				if (!cachedMonth) {
 					await storage.setItem(lastMonth, budgetMonthData)
@@ -120,11 +139,14 @@ export async function applyRollovers() {
 							!c.deleted &&
 							c.category_group_id !== paymentsGroupId &&
 							c.original_category_group_id !== paymentsGroupId &&
-							c.name !== `To be Budgeted`
+							c.name !== BudgetName.rolloverCategory
 					),
-					transactions: reduceByProp(`category_id`, allExistingRolloverTransactions.filter(
-						(t) => t.date === lastMonth && t.category_id
-					) as TransactionWithCategory[])
+					transactions: reduceByProp(
+						`category_id`,
+						allExistingRolloverTransactions.filter(
+							(t) => t.date === lastMonth && t.category_id
+						) as TransactionWithCategory[]
+					)
 				}
 			})
 		)
@@ -152,7 +174,8 @@ export async function applyRollovers() {
 		const previousMonth = getMonth(i - 1)
 		const currentMonth = getMonth(i)
 
-		const previousSet: Month = i === 0 ? (monthSets[previousMonth] = {}) : monthSets[previousMonth]
+		const previousSet: Month =
+			i === 0 ? (monthSets[previousMonth] = {}) : monthSets[previousMonth]
 		const currentSet: Month = (monthSets[currentMonth] = {})
 
 		// The first time, we have to first fill in the previous month
@@ -207,6 +230,7 @@ export async function applyRollovers() {
 		}
 	}
 
+	const promises: Promise<void>[] = []
 	const update: ynab.UpdateTransaction[] = []
 	const create: ynab.SaveTransaction[] = []
 
@@ -216,7 +240,7 @@ export async function applyRollovers() {
 		for (const [categoryId, { adjustment, existing, name }] of Object.entries(set)) {
 			totalAdjustment -= adjustment
 
-			if (adjustment === 0 || existing === adjustment) {
+			if (existing === adjustment) {
 				continue
 			}
 
@@ -239,18 +263,40 @@ export async function applyRollovers() {
 					id: existingAdjustment.id,
 					...transaction
 				})
-			} else {
+			} else if (adjustment !== 0) {
 				create.push(transaction)
 			}
 		}
 
-		if (totalAdjustment === 0) {
-			continue
+		if (presentMonth === month) {
+			promises.push(
+				api.categories
+					.getMonthCategoryById(BudgetName.budget, presentMonth, rolloverId)
+					.then(
+						({
+							data: {
+								category: { balance, budgeted }
+							}
+						}) => {
+							if (balance !== totalAdjustment) {
+								return api.categories
+									.updateMonthCategory(BudgetName.budget, presentMonth, rolloverId, {
+										category: { budgeted: totalAdjustment - balance + budgeted }
+									})
+									.then(() =>
+										log(`Updated ${BudgetName.rolloverCategory} budgeted amount.`)
+									)
+							}
+
+							return undefined
+						}
+					)
+			)
 		}
 
-		const tbbTransaction = {
+		const rolloverTransaction = {
 			account_id: accountId,
-			category_id: tbbCategoryId,
+			category_id: rolloverId,
 			amount: totalAdjustment,
 			approved: true,
 			cleared: ynab.UpdateTransaction.ClearedEnum.Cleared,
@@ -258,29 +304,29 @@ export async function applyRollovers() {
 			payee_id: payeeId
 		}
 
-		const tbbExisting = tbbTransactionsByMonth[month]
+		const existingRollover = rolloverTransactionsByMonth[month]
 
-		if (tbbExisting) {
-			if (tbbExisting.amount !== totalAdjustment) {
+		if (existingRollover) {
+			if (existingRollover.amount !== totalAdjustment) {
 				update.push({
-					id: tbbExisting.id,
-					...tbbTransaction
+					id: existingRollover.id,
+					...rolloverTransaction
 				})
 			}
-		} else {
-			create.push(tbbTransaction)
+		} else if (totalAdjustment !== 0) {
+			create.push(rolloverTransaction)
 		}
 	}
 
-	const promises: Promise<void>[] = []
-
 	if (create.length > 0) {
-		log(`Creating ${create.length} rollover transaction${create.length === 1 ? `` : `s`}.`)
+		log(
+			`Creating ${create.length} rollover transaction${create.length === 1 ? `` : `s`}.`
+		)
 
 		if (!debug) {
 			promises.push(
 				api.transactions
-					.createTransactions(BudgetValue.budget, {
+					.createTransactions(BudgetName.budget, {
 						transactions: create
 					})
 					.then(() => log(`Done creating.`))
@@ -289,12 +335,14 @@ export async function applyRollovers() {
 	}
 
 	if (update.length > 0) {
-		log(`Updating ${update.length} rollover transaction${update.length === 1 ? `` : `s`}.`)
+		log(
+			`Updating ${update.length} rollover transaction${update.length === 1 ? `` : `s`}.`
+		)
 
 		if (!debug) {
 			promises.push(
 				api.transactions
-					.updateTransactions(BudgetValue.budget, {
+					.updateTransactions(BudgetName.budget, {
 						transactions: update
 					})
 					.then(() => log(`Done updating.`))

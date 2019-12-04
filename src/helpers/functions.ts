@@ -14,7 +14,10 @@ export function getMonth(month: number, startYear = 2019, startMonth = 0) {
 }
 
 /** Redure the passed array to a map mapped by the passed prop. */
-export function reduceByProp<K extends keyof T, T extends { [Key in K]: string }>(key: K, array: T[]) {
+export function reduceByProp<K extends keyof T, T extends { [Key in K]: string }>(
+	key: K,
+	array: T[]
+) {
 	return array.reduce<{ [K: string]: T | undefined }>(
 		(trans, next) => (trans[next[key]] = next) && trans,
 		{}
@@ -28,7 +31,11 @@ export function reduceByProp<K extends keyof T, T extends { [Key in K]: string }
  * @param matching A RegExp that the response should match. If the response does not match this, the retry string will be used to ask again.
  * @param retry The string to use to ask again if the response does not match the RegExp. Defaults to `Try again. ${question}`.
  */
-export async function prompt(question: string, matching = /.?/, retry = `Try again. ${question}`): Promise<string> {
+export async function prompt(
+	question: string,
+	matching = /.?/,
+	retry = `Try again. ${question}`
+): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		// tslint:disable-next-line: no-any
 		const resolver = (data: Buffer) => {

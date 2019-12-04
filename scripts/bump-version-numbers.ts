@@ -1,5 +1,5 @@
-import appRoot from 'app-root-path'
-import { promises as fs } from 'fs'
+import appRoot from "app-root-path"
+import { promises as fs } from "fs"
 
 async function run() {
 	process.chdir(appRoot.path)

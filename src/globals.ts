@@ -31,15 +31,21 @@ declare global {
 		/** Filter out all falsey items. */
 		filter(loose: true): NonOptional<T>[]
 		/** Find an item that matches this predicate, remove it from the array, and return it. */
-		findAndRemove<This = void>(predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T | undefined
+		findAndRemove<This = void>(
+			predicate: (this: This, value: T, index: number, array: T[]) => boolean,
+			thisArg?: This
+		): T | undefined
 		/** Find all items that matches this predicate, remove them from the array, and return them. */
-		filterAndRemove<This = void>(predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T[]
+		filterAndRemove<This = void>(
+			predicate: (this: This, value: T, index: number, array: T[]) => boolean,
+			thisArg?: This
+		): T[]
 	}
 }
 
 // Define global._ so that you can throw away unused values with `_ = value`
 Object.defineProperty(global, `_`, {
-	set(_) { },
+	set(_) {},
 	enumerable: false,
 	configurable: true
 })
@@ -98,7 +104,11 @@ Object.defineProperty(Promise, `wait`, {
 			configurable: true
 		},
 		findAndRemove: {
-			value<T, This = void>(this: T[], predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T | undefined {
+			value<T, This = void>(
+				this: T[],
+				predicate: (this: This, value: T, index: number, array: T[]) => boolean,
+				thisArg?: This
+			): T | undefined {
 				const index = this.findIndex(predicate, thisArg)
 
 				if (index >= 0) {
@@ -111,7 +121,11 @@ Object.defineProperty(Promise, `wait`, {
 			configurable: true
 		},
 		filterAndRemove: {
-			value<T, This = void>(this: T[], predicate: (this: This, value: T, index: number, array: T[]) => boolean, thisArg?: This): T[] {
+			value<T, This = void>(
+				this: T[],
+				predicate: (this: This, value: T, index: number, array: T[]) => boolean,
+				thisArg?: This
+			): T[] {
 				const matches: T[] = []
 
 				for (let i = this.length - 1; i >= 0; i -= 1) {

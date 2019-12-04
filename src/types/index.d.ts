@@ -1,21 +1,31 @@
-export type UnionProp<P extends Key, T1, V1, T2, V2 = void, T3 = void, V3 = void, T4 = void, V4 = void, T5 = void, V5 = void> =
-	{ [K in P]: T1 } & V1 |
-	(V2 extends void
-		? { [K in P]: T2 } & {}
-		: { [K in P]: T2 } & V2) |
-	(T3 | V3 extends void
-		? { [K in P]: T1 } & V1
-		: V3 extends void
+export type UnionProp<
+	P extends Key,
+	T1,
+	V1,
+	T2,
+	V2 = void,
+	T3 = void,
+	V3 = void,
+	T4 = void,
+	V4 = void,
+	T5 = void,
+	V5 = void
+> =
+	| ({ [K in P]: T1 } & V1)
+	| (V2 extends void ? { [K in P]: T2 } & {} : { [K in P]: T2 } & V2)
+	| (T3 | V3 extends void
+			? { [K in P]: T1 } & V1
+			: V3 extends void
 			? { [K in P]: T3 }
-			: { [K in P]: T3 } & V3) |
-	(T4 | V4 extends void
-		? { [K in P]: T1 } & V1
-		: V4 extends void
+			: { [K in P]: T3 } & V3)
+	| (T4 | V4 extends void
+			? { [K in P]: T1 } & V1
+			: V4 extends void
 			? { [K in P]: T4 }
-			: { [K in P]: T4 } & V4) |
-	(T5 | V5 extends void
-		? { [K in P]: T1 } & V1
-		: V5 extends void
+			: { [K in P]: T4 } & V4)
+	| (T5 | V5 extends void
+			? { [K in P]: T1 } & V1
+			: V5 extends void
 			? { [K in P]: T5 }
 			: { [K in P]: T5 } & V5)
 export type TernaryProp<P extends Key, T, U> = UnionProp<P, true, T, false, U>
@@ -33,14 +43,19 @@ export type Require<T, K extends keyof T> = Omit<T, K> & { [P in K]: NonNullable
 export type PartialProps<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] }
 
 export type ValueOf<T extends {}> = T[keyof T]
-export type Unpacked<T> =
-	T extends (infer U)[] ? U :
-	// tslint:disable-next-line: no-any
-	T extends (...args: any[]) => infer V ? V :
-	T extends Promise<infer W> ? W :
-	T
+export type Unpacked<T> = T extends (infer U)[]
+	? U // tslint:disable-next-line: no-any
+	: T extends (...args: any[]) => infer V
+	? V
+	: T extends Promise<infer W>
+	? W
+	: T
 
-export type Stringlike<T extends PropertyKey> = T extends string ? T : T extends number ? StringForNumber[T] : never
+export type Stringlike<T extends PropertyKey> = T extends string
+	? T
+	: T extends number
+	? StringForNumber[T]
+	: never
 
 interface StringForNumber {
 	0: `0`

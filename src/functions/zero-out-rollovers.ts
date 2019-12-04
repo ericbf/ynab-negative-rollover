@@ -1,7 +1,7 @@
 import * as ynab from "ynab"
 
 import { getMonth } from "../helpers"
-import { api, BudgetValue, debug, Storage, StorageKey } from "../index"
+import { api, BudgetName, debug, Storage, StorageKey } from "../index"
 
 export async function zeroOutRollovers() {
 	const storage = await Storage
@@ -11,8 +11,8 @@ export async function zeroOutRollovers() {
 			return id
 		}
 
-		const payees = await api.payees.getPayees(BudgetValue.budget)
-		const payee = payees.data.payees.find((a) => a.name === BudgetValue.budgetRollover)
+		const payees = await api.payees.getPayees(BudgetName.budget)
+		const payee = payees.data.payees.find((a) => a.name === BudgetName.rolloverPayee)
 
 		if (!payee) {
 			throw new Error(`No rollover payee found.`)
@@ -27,7 +27,11 @@ export async function zeroOutRollovers() {
 		debug && (await storage.getItem<ynab.HybridTransactionsResponse>(`transactions`))
 	const transationsData =
 		cachedTransactions ||
-		(await api.transactions.getTransactionsByPayee(BudgetValue.budget, payeeId, getMonth(0)))
+		(await api.transactions.getTransactionsByPayee(
+			BudgetName.budget,
+			payeeId,
+			getMonth(0)
+		))
 
 	if (!cachedTransactions) {
 		await storage.setItem(`transactions`, transationsData)
@@ -35,7 +39,7 @@ export async function zeroOutRollovers() {
 
 	const allExistingRolloverTransactions = transationsData.data.transactions
 
-	return api.transactions.updateTransactions(BudgetValue.budget, {
+	return api.transactions.updateTransactions(BudgetName.budget, {
 		transactions: allExistingRolloverTransactions.map((t) => ({
 			...t,
 			amount: 0
