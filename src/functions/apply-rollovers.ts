@@ -1,6 +1,6 @@
 import * as ynab from "ynab"
 
-import { asTuple, error, getMonth, log, reduceByProp } from "../helpers"
+import { asTuple, error, getMonth, log, reduceByProp, findMap } from "../helpers"
 import { api, BudgetName, debug, Storage, StorageKey } from "../index"
 
 export async function applyRollovers() {
@@ -54,13 +54,13 @@ export async function applyRollovers() {
 			return value
 		})
 
-	const [paymentsGroupId, rolloverCategoryId] = await storage
-		.getItem<[string | undefined, string]>(
+	const [paymentsGroupId, rolloverCategoryId, inflowsCategoryId] = await storage
+		.getItem<[string | undefined, string, string]>(
 			StorageKey.paymentsGroupAndRolloverCategory +
 				BudgetName.budget +
 				BudgetName.rolloverCategory
 		)
-		.then<[string | undefined, string]>(async (ids) => {
+		.then(async (ids) => {
 			if (ids) {
 				return ids
 			}
@@ -69,13 +69,14 @@ export async function applyRollovers() {
 			const groups = groupsData.data.category_groups
 
 			const group = groups.find((g) => g.name === BudgetName.creditCardPayments)
-			const rollover = groups.reduce<ynab.Category | undefined>((trans, next) => {
-				if (trans) {
-					return trans
-				}
 
-				return next.categories.find((c) => c.name === BudgetName.rolloverCategory)
-			}, undefined)
+			const rollover = findMap(groups, (group) =>
+				group.categories.find((category) => category.name === BudgetName.rolloverCategory)
+			)
+
+			const inflows = findMap(groups, (group) =>
+				group.categories.find((category) => category.name === BudgetName.inflowsCategory)
+			)
 
 			if (!group) {
 				log(
@@ -89,16 +90,25 @@ export async function applyRollovers() {
 				)
 			}
 
-			const values = asTuple([group && group.id, rollover.id])
+			if (!inflows) {
+				throw new Error(`Inflows category was not found. Please report this.`)
+			}
+
+			const values = asTuple([group && group.id, rollover.id, inflows.id])
 
 			await storage.setItem(StorageKey.paymentsGroupAndRolloverCategory, values)
 
 			return values
 		})
 
-	if (!rolloverAccountId || !rolloverPayeeId || !rolloverCategoryId) {
+	if (
+		!rolloverAccountId ||
+		!rolloverPayeeId ||
+		!rolloverCategoryId ||
+		!inflowsCategoryId
+	) {
 		error(
-			`Failed to fetch rollover account (${rolloverAccountId}), rollover payee ${rolloverPayeeId}, or rollover category ID ${rolloverCategoryId}. Please clear the cache.`
+			`Failed to fetch rollover account (${rolloverAccountId}), rollover payee (${rolloverPayeeId}), rollover category ID (${rolloverCategoryId}), or inflows category ID (${inflowsCategoryId}). Please clear the cache.`
 		)
 
 		process.exit(-1)
@@ -157,7 +167,8 @@ export async function applyRollovers() {
 					categories: budgetMonthData.data.month.categories.filter(
 						(c) =>
 							!c.deleted &&
-							c.name !== BudgetName.rolloverCategory &&
+							c.id !== rolloverCategoryId &&
+							c.id !== inflowsCategoryId &&
 							c.category_group_id !== paymentsGroupId &&
 							c.original_category_group_id !== paymentsGroupId
 					),
@@ -288,37 +299,6 @@ export async function applyRollovers() {
 			}
 		}
 
-		if (presentMonth === month) {
-			promises.push(
-				api.categories
-					.getMonthCategoryById(BudgetName.budget, presentMonth, rolloverCategoryId)
-					.then(
-						({
-							data: {
-								category: { balance, budgeted }
-							}
-						}) => {
-							if (balance !== totalAdjustment) {
-								return api.categories
-									.updateMonthCategory(
-										BudgetName.budget,
-										presentMonth,
-										rolloverCategoryId,
-										{
-											category: { budgeted: totalAdjustment - balance + budgeted }
-										}
-									)
-									.then(() =>
-										log(`Updated ${BudgetName.rolloverCategory} budgeted amount.`)
-									)
-							}
-
-							return undefined
-						}
-					)
-			)
-		}
-
 		const rolloverTransaction = {
 			account_id: rolloverAccountId,
 			category_id: rolloverCategoryId,
@@ -340,6 +320,42 @@ export async function applyRollovers() {
 			}
 		} else if (totalAdjustment !== 0) {
 			create.push(rolloverTransaction)
+		}
+
+		if (month === presentMonth) {
+			promises.push(
+				api.categories
+					.getMonthCategoryById(BudgetName.budget, presentMonth, rolloverCategoryId)
+					.then(
+						({
+							data: {
+								category: { balance, budgeted }
+							}
+						}) => {
+							let offset = existingRollover ? existingRollover.amount : 0
+							let newBalance = balance + totalAdjustment - offset
+
+							if (newBalance !== totalAdjustment) {
+								return api.categories
+									.updateMonthCategory(
+										BudgetName.budget,
+										presentMonth,
+										rolloverCategoryId,
+										{
+											category: {
+												budgeted: balance + budgeted - offset
+											}
+										}
+									)
+									.then(() =>
+										log(`Updated ${BudgetName.rolloverCategory} budgeted amount.`)
+									)
+							}
+
+							return undefined
+						}
+					)
+			)
 		}
 	}
 

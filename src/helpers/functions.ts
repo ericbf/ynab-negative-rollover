@@ -98,3 +98,15 @@ export function asTuple<T>(tuple: T[]): T[]
 export function asTuple<T>(tuple: T[]) {
 	return tuple
 }
+
+export function findMap<T, U>(array: T[], predicate: (element: T) => U | undefined) {
+	for (const element of array) {
+		const mapped = predicate(element)
+
+		if (mapped) {
+			return mapped
+		}
+	}
+
+	return undefined
+}

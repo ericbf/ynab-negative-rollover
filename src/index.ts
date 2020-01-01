@@ -50,7 +50,8 @@ export const BudgetName = {
 	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget Rollover`,
 	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget Rollover`,
 	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover Offset`,
-	creditCardPayments: `Credit Card Payments`
+	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflows`,
+	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`
 } as const
 
 async function run() {

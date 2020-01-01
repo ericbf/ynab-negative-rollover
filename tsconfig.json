@@ -3,7 +3,7 @@
 		"target": "ES2016",
 		"module": "commonjs",
 		"lib": ["es2016"],
-		"sourceMap": false,
+		"sourceMap": true,
 		"outDir": "./build",
 		"rootDir": "./src",
 		"baseUrl": ".",
