@@ -1,6 +1,6 @@
 {
 	"name": "ynab-negative-rollover",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"description": "A script that enables you to rollover your negative balances in [YNAB](https://www.youneedabudget.com).",
 	"main": "build/index.js",
 	"scripts": {
@@ -27,7 +27,7 @@
 		"ts-node": "^8.3.0",
 		"tsc-watch": "^2.4.0",
 		"tslint": "^5.18.0",
-		"typescript": "^3.5.3"
+		"typescript": "^3.7.5"
 	},
 	"dependencies": {
 		"@types/node": "^12.7.3",
