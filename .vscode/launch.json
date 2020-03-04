@@ -7,12 +7,13 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Launch Program",
+			"name": "Launch",
 			"skipFiles": ["<node_internals>/**"],
 			"program": "${workspaceFolder}/src/index.ts",
 			"preLaunchTask": "tsc: build - tsconfig.json",
 			"outFiles": ["${workspaceFolder}/build/**/*.js"],
-			"console": "integratedTerminal"
+			"console": "integratedTerminal",
+			"runtimeVersion": "13.7.0"
 		}
 	]
 }

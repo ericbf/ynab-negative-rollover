@@ -1,6 +1,6 @@
 import * as ynab from "ynab"
 
-import { asTuple, error, findMap, getMonth, log, reduceByProp } from "../helpers"
+import { error, findMap, getMonth, log, reduceByProp, tuple } from "../helpers"
 import { api, debug, Key, Name, Storage } from "../index"
 
 export async function applyRollovers() {
@@ -50,50 +50,48 @@ export async function applyRollovers() {
 		return value
 	})
 
-	const [paymentsGroupId, rolloverCategoryId, inflowsCategoryId]: [
-		string | undefined,
-		string,
-		string
-	] = await storage.getItem(Key.paymentsRolloverAndInflows).then(async (ids) => {
-		if (ids) {
-			return ids
-		}
+	const [paymentsGroupId, rolloverCategoryId, inflowsCategoryId] = await storage
+		.getItem(Key.paymentsOutsideRolloverAndInflows)
+		.then(async (ids) => {
+			if (ids) {
+				return ids as typeof values
+			}
 
-		const groupsData = await api.categories.getCategories(Name.budget)
-		const groups = groupsData.data.category_groups
+			const groupsData = await api.categories.getCategories(Name.budget)
+			const groups = groupsData.data.category_groups
 
-		const payments = groups.find((g) => g.name === Name.creditCardPayments)
+			const payments = groups.find((g) => g.name === Name.creditCardPayments)
 
-		const rollover = findMap(groups, (group) =>
-			group.categories.find((category) => category.name === Name.rolloverCategory)
-		)
-
-		const inflows = findMap(groups, (group) =>
-			group.categories.find((category) => category.name === Name.inflowsCategory)
-		)
-
-		if (!payments) {
-			log(
-				`Didn't find a Credit Card Payments group. Do you not have any credit cards set up? If you do have any credit card accounts set up, please report this.`
+			const rollover = findMap(groups, (group) =>
+				group.categories.find((category) => category.name === Name.rolloverCategory)
 			)
-		}
 
-		if (!rollover) {
-			throw new Error(
-				`Rollover category was not found. Please create a budget category called "${Name.rolloverCategory}".`
+			const inflows = findMap(groups, (group) =>
+				group.categories.find((category) => category.name === Name.inflowsCategory)
 			)
-		}
 
-		if (!inflows) {
-			throw new Error(`Inflows category was not found. Please report this.`)
-		}
+			if (!payments) {
+				log(
+					`Didn't find a Credit Card Payments group. Do you not have any credit cards set up? If you do have any credit card accounts set up, please report this.`
+				)
+			}
 
-		const values = asTuple([payments && payments.id, rollover.id, inflows.id])
+			if (!rollover) {
+				throw new Error(
+					`Rollover category was not found. Please create a budget category called "${Name.rolloverCategory}".`
+				)
+			}
 
-		await storage.setItem(Key.paymentsRolloverAndInflows, values)
+			if (!inflows) {
+				throw new Error(`Inflows category was not found. Please report this.`)
+			}
 
-		return values
-	})
+			const values = tuple(payments?.id, rollover.id, inflows.id)
+
+			await storage.setItem(Key.paymentsOutsideRolloverAndInflows, values)
+
+			return values
+		})
 
 	if (
 		!rolloverAccountId ||
@@ -111,11 +109,12 @@ export async function applyRollovers() {
 	const startYear = 2019
 	const start = new Date(`${startYear}-01-01`)
 	const end = new Date()
-	const delta =
+	const numberMonthsSinceStart =
 		end.getFullYear() * 12 +
 		end.getMonth() -
 		(start.getFullYear() * 12 + start.getMonth())
-	const presentMonth = getMonth(0, end.getFullYear(), end.getMonth())
+	const currentMonth = getMonth(numberMonthsSinceStart - 1)
+	const previousMonth = getMonth(numberMonthsSinceStart - 2)
 
 	const cachedTransactions =
 		debug && (await storage.getItem<ynab.HybridTransactionsResponse>(`transactions`))
@@ -141,10 +140,11 @@ export async function applyRollovers() {
 			(t) => t.category_id === rolloverCategoryId
 		)
 	)
+
 	const byMonth = reduceByProp(
 		`month`,
 		await Promise.all(
-			Array.from({ length: delta + 1 }).map(async (_, i) => {
+			Array.from({ length: numberMonthsSinceStart + 1 }).map(async (_, i) => {
 				const lastMonth = getMonth(i - 1)
 
 				const cachedMonth =
@@ -166,6 +166,8 @@ export async function applyRollovers() {
 							c.category_group_id !== paymentsGroupId &&
 							c.original_category_group_id !== paymentsGroupId
 					),
+					toBeBudgeted: budgetMonthData.data.month.to_be_budgeted,
+					budgeted: budgetMonthData.data.month.budgeted,
 					transactions: reduceByProp(
 						`category_id`,
 						allExistingRolloverTransactions.filter(
@@ -195,17 +197,16 @@ export async function applyRollovers() {
 
 	const monthSets: MonthSet = {}
 
-	for (const [i] of Array.from({ length: delta }).entries()) {
-		const previousMonth = getMonth(i - 1)
-		const currentMonth = getMonth(i)
+	for (const [i] of Array.from({ length: numberMonthsSinceStart }).entries()) {
+		const lastMonth = getMonth(i - 1)
+		const thisMonth = getMonth(i)
 
-		const previousSet: Month =
-			i === 0 ? (monthSets[previousMonth] = {}) : monthSets[previousMonth]
-		const currentSet: Month = (monthSets[currentMonth] = {})
+		const previousSet = monthSets[lastMonth] || (monthSets[lastMonth] = {})
+		const currentSet: Month = (monthSets[thisMonth] = {})
 
 		// The first time, we have to first fill in the previous month
 		if (i === 0) {
-			for (const { id, balance, name } of byMonth[previousMonth]!.categories) {
+			for (const { id, balance, name } of byMonth[lastMonth]!.categories) {
 				previousSet[id] = {
 					name,
 					balance,
@@ -217,7 +218,7 @@ export async function applyRollovers() {
 		}
 
 		// Let's calculate values for the current month
-		for (const { id, balance, name } of byMonth[currentMonth]!.categories) {
+		for (const { id, balance, name } of byMonth[thisMonth]!.categories) {
 			if (!previousSet[id]) {
 				// A category was created, so let's set the initial previous value.
 				previousSet[id] = {
@@ -233,14 +234,12 @@ export async function applyRollovers() {
 
 			const adjustment = previousNewBalance < 0 ? previousNewBalance : 0
 
-			const existing = byMonth[currentMonth]!.transactions[id]
-				? byMonth[currentMonth]!.transactions[id]!.amount
+			const existing = byMonth[thisMonth]!.transactions[id]
+				? byMonth[thisMonth]!.transactions[id]!.amount
 				: 0
 
 			const newBalance = existing
-				? adjustment === existing
-					? balance
-					: balance - existing + adjustment
+				? balance - existing + adjustment
 				: previousBalance < 0
 				? balance + adjustment
 				: balance - previousBalance + previousNewBalance
@@ -317,23 +316,32 @@ export async function applyRollovers() {
 			create.push(rolloverTransaction)
 		}
 
-		if (month === presentMonth) {
+		if (month === currentMonth) {
 			onDone = async () =>
 				api.categories
-					.getMonthCategoryById(Name.budget, presentMonth, rolloverCategoryId)
+					.getMonthCategoryById(Name.budget, currentMonth, rolloverCategoryId)
 					.then(
 						async ({
 							data: {
 								category: { balance, budgeted }
 							}
 						}) => {
-							if (balance !== totalAdjustment) {
-								const rollover = balance - budgeted
+							const thisMonth = byMonth[currentMonth]!
+							const lastMonth = byMonth[previousMonth]!
+							const rollover = balance - budgeted
+							const baseBudgeted = totalAdjustment - rollover
 
+							const offset =
+								thisMonth.toBeBudgeted -
+								lastMonth.toBeBudgeted +
+								thisMonth.budgeted -
+								baseBudgeted
+
+							if (balance !== totalAdjustment + offset) {
 								await api.categories
-									.updateMonthCategory(Name.budget, presentMonth, rolloverCategoryId, {
+									.updateMonthCategory(Name.budget, currentMonth, rolloverCategoryId, {
 										category: {
-											budgeted: totalAdjustment - rollover
+											budgeted: totalAdjustment - rollover + offset
 										}
 									})
 									.then(() => log(`Updated ${Name.rolloverCategory} budgeted amount.`))

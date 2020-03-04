@@ -47,14 +47,14 @@ export const Name = {
 	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflows`,
 	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`
 } as const
-export type BudgetName = keyof typeof Name
+export type Name = keyof typeof Name
 
 export const Key = {
 	account: `${Name.budget}_account_${Name.rolloverAccount}`,
 	payee: `${Name.budget}_payee_${Name.rolloverPayee}`,
-	paymentsRolloverAndInflows: `${Name.budget}_paymentsGroup_${Name.creditCardPayments}_rolloverCategory_${Name.rolloverCategory}_inflowsCategory_${Name.inflowsCategory}`
+	paymentsOutsideRolloverAndInflows: `${Name.budget}_paymentsGroup_${Name.creditCardPayments}_rolloverCategory_${Name.rolloverCategory}_inflowsCategory_${Name.inflowsCategory}`
 } as const
-export type StorageKey = keyof typeof Key
+export type Key = keyof typeof Key
 
 async function run() {
 	// tslint:disable-next-line: no-unnecessary-type-assertion

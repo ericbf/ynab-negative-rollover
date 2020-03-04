@@ -173,7 +173,7 @@
 		"cyclomatic-complexity": false, // Enforces a threshold of cyclomatic complexity.
 		"deprecation": true, // Warns when deprecated APIs are used.
 		"eofline": true, // Ensures the file ends with a newline.
-		"indent": [true, "tabs", 4], // Enforces indentation with tabs or spaces.
+		"indent": false, // Enforces indentation with tabs or spaces.
 		"linebreak-style": [true, "LF"], // Enforces a consistent linebreak style.
 		"max-classes-per-file": [true, 2, "exclude-class-expressions"], // A file may not contain more than the specified number of classes
 		// "max-file-line-count": 1000, // Requires files to remain under a certain number of lines
