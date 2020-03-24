@@ -11,9 +11,23 @@ declare global {
 	var _: any
 
 	interface ObjectConstructor {
-		entries<T extends {}, U extends keyof T>(obj: T): [Stringlike<U>, T[U]][]
-		keys<T extends {}>(obj: T): Stringlike<keyof T>[]
-		values<T extends {}, U extends keyof T>(obj: T): T[U][]
+		entries<Type extends {}, Key extends keyof Type>(
+			obj: Type
+		): [Stringlike<Key>, Type[Key]][]
+		keys<Type extends {}>(obj: Type): Stringlike<keyof Type>[]
+		values<Type extends {}, Key extends keyof Type>(obj: Type): Type[Key][]
+
+		/**
+		 * Map an object's values to the result of a mapper function.
+		 *
+		 * @param obj The object to map.
+		 * @param mapper The mapper function to use.
+		 * @returns A version of the object with its values mapped.
+		 */
+		map<Type extends {}, Key extends keyof Type, Value>(
+			obj: Type,
+			mapper: (key: Key, value: Type[Key]) => Value
+		): { [K in Key]: Value }
 	}
 
 	interface PromiseConstructor {
@@ -36,10 +50,31 @@ declare global {
 			thisArg?: This
 		): T | undefined
 		/** Find all items that matches this predicate, remove them from the array, and return them. */
-		filterAndRemove<This = void>(
+		removeMatching<This = void>(
 			predicate: (this: This, value: T, index: number, array: T[]) => boolean,
 			thisArg?: This
 		): T[]
+		/** Sort by the passed keys in ascending order. */
+		sortBy(...keys: (keyof T)[]): T[]
+		/**
+		 * Search in an array and map the item. Return the first item with which the predicate/mapper returns true.
+		 *
+		 * @param array The array to search for the item with the mapper.
+		 * @param predicate The predicate/mapper to use.
+		 */
+		mappedFind<U>(predicate: (element: T) => U | undefined): U
+
+		/**
+		 * Reduce the passed array to a map mapped by the passed prop.
+		 * @param key The key whose value should be used as the index.
+		 */
+		indexBy<K extends keyof T>(this: T[], key: K): { [K in string]: T | undefined }
+		/**
+		 * Reduce an array to a map of arrays grouped by a prop
+		 *
+		 * @param key The key whose value should be used for the grouping.
+		 */
+		groupBy<K extends keyof T>(this: T[], key: K): { [K in string]: T[] | undefined }
 	}
 }
 
@@ -48,6 +83,22 @@ Object.defineProperty(global, `_`, {
 	set(_) {},
 	enumerable: false,
 	configurable: true
+})
+
+Object.defineProperties(Object, {
+	map: {
+		value<T extends object, V>(
+			obj: T,
+			mapper: (key: keyof T, value: T[typeof key]) => V
+		): { [K in keyof T]: V } {
+			// tslint:disable-next-line: no-any
+			return Object.entries(obj).reduce<any>((trans, [prop, value]) => {
+				trans[prop] = mapper(prop as keyof T, value)
+
+				return trans
+			}, {})
+		}
+	}
 })
 
 Object.defineProperty(Promise, `wait`, {
@@ -75,9 +126,7 @@ Object.defineProperty(Promise, `wait`, {
 				}
 
 				return filter.call(this, ...args)
-			},
-			enumerable: false,
-			configurable: true
+			}
 		},
 		first: {
 			get<T>(this: T[]) {
@@ -85,9 +134,7 @@ Object.defineProperty(Promise, `wait`, {
 			},
 			set<T>(this: T[], value: T) {
 				this[0] = value
-			},
-			enumerable: false,
-			configurable: true
+			}
 		},
 		last: {
 			get<T>(this: T[]) {
@@ -99,9 +146,7 @@ Object.defineProperty(Promise, `wait`, {
 				} else {
 					this[this.length - 1] = value
 				}
-			},
-			enumerable: false,
-			configurable: true
+			}
 		},
 		findAndRemove: {
 			value<T, This = void>(
@@ -116,11 +161,9 @@ Object.defineProperty(Promise, `wait`, {
 				}
 
 				return undefined
-			},
-			enumerable: false,
-			configurable: true
+			}
 		},
-		filterAndRemove: {
+		removeMatching: {
 			value<T, This = void>(
 				this: T[],
 				predicate: (this: This, value: T, index: number, array: T[]) => boolean,
@@ -135,9 +178,62 @@ Object.defineProperty(Promise, `wait`, {
 				}
 
 				return matches
-			},
-			enumerable: false,
-			configurable: true
+			}
+		},
+		sortBy: {
+			value<T>(this: T[], ...keys: (keyof T)[]) {
+				return this.sort(
+					(lhs, rhs) =>
+						keys.mappedFind((key) =>
+							lhs[key] < rhs[key] ? -1 : lhs[key] > rhs[key] ? 1 : 0
+						) ?? 0
+				)
+			}
+		},
+		mappedFind: {
+			value<T, U>(this: T[], predicate: (element: T) => U | undefined) {
+				for (const element of this) {
+					const mapped = predicate(element)
+
+					if (mapped) {
+						return mapped
+					}
+				}
+
+				return undefined
+			}
+		},
+		indexBy: {
+			value<
+				K extends keyof T,
+				V extends string | number | null,
+				T extends { [Key in K]?: V }
+			>(this: T[], key: K) {
+				return this.reduce<{ [K: string]: T | undefined }>((trans, next) => {
+					trans[next[key] ?? `undefined`] = next
+
+					return trans
+				}, {})
+			}
+		},
+		groupBy: {
+			value<
+				K extends keyof T,
+				V extends string | number | null,
+				T extends { [Key in K]?: V }
+			>(this: T[], key: K) {
+				return this.reduce<{ [K: string]: T[] | undefined }>((trans, next) => {
+					const arr = trans[next[key] ?? `undefined`]
+
+					if (arr) {
+						arr.push(next)
+					} else {
+						trans[next[key] ?? `undefined`] = [next]
+					}
+
+					return trans
+				}, {})
+			}
 		}
 	})
 }

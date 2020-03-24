@@ -12,7 +12,7 @@ import { error, prompt } from "./helpers"
 export let token = process.env.TOKEN && process.env.TOKEN.trim()
 
 /** Whether we are currently debugging */
-export const debug = false
+export const debug = Boolean(false)
 
 if (!token) {
 	try {
@@ -39,22 +39,32 @@ export const Storage = storage
 	.init({ dir: path.join(__dirname, `db`) })
 	.then(() => storage)
 
+export type Name = keyof typeof Name
 export const Name = {
 	budget: process.env.BUDGET_NAME || `last-used`,
 	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget Rollover`,
 	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget Rollover`,
 	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover Offset`,
 	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflows`,
-	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`
+	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`,
+	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [
+		`Ferreira.Life`,
+		`Unbudgeted`
+	]
 } as const
-export type Name = keyof typeof Name
 
-export const Key = {
-	account: `${Name.budget}_account_${Name.rolloverAccount}`,
-	payee: `${Name.budget}_payee_${Name.rolloverPayee}`,
-	paymentsOutsideRolloverAndInflows: `${Name.budget}_paymentsGroup_${Name.creditCardPayments}_rolloverCategory_${Name.rolloverCategory}_inflowsCategory_${Name.inflowsCategory}`
-} as const
 export type Key = keyof typeof Key
+export const Key = {
+	rolloverAccountId: `${Name.budget}_account_${Name.rolloverAccount}`,
+	rolloverPayeeId: `${Name.budget}_payee_${Name.rolloverPayee}`,
+	paymentsRolloverAndInflowsGroupIds: `${Name.budget}_paymentsGroup_${
+		Name.creditCardPayments
+	}_${Name.rolloverCategory}_${Name.inflowsCategory}_${Name.groupsToOffset.join(`_`)}`,
+	monthsKnowledge: `${Name.budget}_months_knowledge`,
+	monthsData: `${Name.budget}_months_data`,
+	rolloverTransactionsKnowledge: `${Name.budget}_rollover_transactions_knowledge`,
+	rolloverTransactionsData: `${Name.budget}_rollover_transactions_data`
+} as const
 
 async function run() {
 	// tslint:disable-next-line: no-unnecessary-type-assertion
@@ -80,5 +90,5 @@ Type a number (q to quit): `,
 }
 
 module.exports = run().catch((err) =>
-	error(`An exception was thrown: ${err.message || err}`)
+	error(`An exception was thrown:`, err.detail || err.message || err.descripton || err)
 )
