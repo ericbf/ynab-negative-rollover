@@ -67,6 +67,17 @@ export const Key = {
 } as const
 
 async function run() {
+	const action = process.argv[2]
+
+	switch (action) {
+		case `apply`:
+			return applyRollovers()
+		case `zero`:
+			return zeroOutRollovers()
+		case `clear`:
+			return clearCache()
+	}
+
 	// tslint:disable-next-line: no-unnecessary-type-assertion
 	const response = (await prompt(
 		`Which would you like?

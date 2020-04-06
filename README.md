@@ -6,7 +6,7 @@ A script that enables you to rollover your negative balances in [YNAB](https://w
 
 This only has a global dependency on [`node`](http://nodejs.org).
 
-## Initializing the app
+## Initializing
 
 To install local dependencies, run `npm i`. Make sure you are providing the app your API token, otherwise it will not work.
 
@@ -21,10 +21,17 @@ You can pass parameters in the command line when running this. This is like stan
 `ROLLOVER_PAYEE`: the payee to use for the rollover transactions. Defaults to `"Budget Rollover"`
 `ROLLOVER_ACCOUNT`: the account to use for the rollover transactions. Defaults to `"Budget Rollover"`
 `ROLLOVER_CATEGORY`: the category to use for the rollover transactions. Defaults to `"Rollover Offset"`
+`INFLOWS_CATEGORY`: the name of the inflows category. Defaults to `"Inflows"`.
+`PAYMENTS_GROUP`: the name of the credit card payments group. Defaults to `"Credit Card Payments"`.
+`GROUPS_TO_OFFSET`: the comma separated names of the category groups that should be offsetted in the to bo budgeted about (such as business expenses). Defaults to `"Ferreira.Life,Unbudgeted"`.
 
-## Running the app
+## Running
 
-You can run the app using `npm run start`. Running start runs builds automatically, so if you want to run the app without building, then you need to run `node .` directly.
+This can be run with `node . [apply|zero|clear]`. To automatically build then run, use use `npm run start`.
+
+- `apply`: runs the script to apply the rollover amounts to your budget.
+- `zero`: runs the script that zeros out all existing rollover transactions.
+- `clear`: clears the local cache of saved IDs and transactions.
 
 > If you want to build without running, run `npm run build`.
 
