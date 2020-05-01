@@ -57,50 +57,55 @@ export async function applyRollovers() {
 		rolloverCategoryId,
 		inflowsCategoryId,
 		offsetGroupIds
-	] = await storage.getItem(Key.paymentsRolloverAndInflowsGroupIds).then(async (ids) => {
-		if (ids) {
-			return ids as typeof values
-		}
+	] = await storage
+		.getItem(Key.paymentsRolloverAndInflowsGroupIds)
+		.then<[string | undefined, string, string, string[]]>(async (ids) => {
+			if (ids) {
+				return ids
+			}
 
-		const groupsData = await api.categories.getCategories(Name.budget)
-		const groups = groupsData.data.category_groups
+			const groupsData = await api.categories.getCategories(Name.budget)
+			const groups = groupsData.data.category_groups
 
-		const paymentsGroupId = groups.find((g) => g.name === Name.creditCardPayments)
+			const paymentsGroup = groups.find((g) => g.name === Name.creditCardPayments)
 
-		const rollover = groups.mappedFind(({ categories }) =>
-			categories.find((category) => category.name === Name.rolloverCategory)
-		)
+			if (!paymentsGroup) {
+				log(
+					`Didn't find a Credit Card Payments group. Do you not have any credit cards set up? If you do have any credit card accounts set up, please report this.`
+				)
+			}
 
-		const inflows = groups.mappedFind(({ categories }) =>
-			categories.find((category) => category.name === Name.inflowsCategory)
-		)
-
-		const offsetGroupIds = groups
-			.filter((g) => Name.groupsToOffset.includes(g.name))
-			.map(({ id }) => id)
-
-		if (!paymentsGroupId) {
-			log(
-				`Didn't find a Credit Card Payments group. Do you not have any credit cards set up? If you do have any credit card accounts set up, please report this.`
+			const rollover = groups.mappedFind(({ categories }) =>
+				categories.find((category) => category.name === Name.rolloverCategory)
 			)
-		}
 
-		if (!rollover) {
-			throw new Error(
-				`Rollover category was not found. Please create a budget category called "${Name.rolloverCategory}".`
+			if (!rollover) {
+				throw new Error(
+					`Rollover category was not found. Please create a budget category called "${Name.rolloverCategory}".`
+				)
+			}
+
+			const inflows = groups.mappedFind(({ categories }) =>
+				categories.find((category) => category.name === Name.inflowsCategory)
 			)
-		}
 
-		if (!inflows) {
-			throw new Error(`Inflows category was not found. Please report this.`)
-		}
+			if (!inflows) {
+				throw new Error(`Inflows category was not found. Please report this.`)
+			}
 
-		const values = Tuple(paymentsGroupId?.id, rollover.id, inflows.id, offsetGroupIds)
+			const offsetGroups = groups.filter((g) => Name.groupsToOffset.includes(g.name))
 
-		await storage.setItem(Key.paymentsRolloverAndInflowsGroupIds, values)
+			const values = Tuple(
+				paymentsGroup?.id,
+				rollover.id,
+				inflows.id,
+				offsetGroups.map(({ id }) => id)
+			)
 
-		return values
-	})
+			await storage.setItem(Key.paymentsRolloverAndInflowsGroupIds, values)
+
+			return values
+		})
 
 	if (
 		!rolloverAccountId ||
@@ -109,7 +114,11 @@ export async function applyRollovers() {
 		!inflowsCategoryId
 	) {
 		error(
-			`Failed to fetch rollover account (${rolloverAccountId}), rollover payee (${rolloverPayeeId}), rollover category ID (${rolloverCategoryId}), or inflows category ID (${inflowsCategoryId}). Please clear the cache.`
+			`Failed to fetch rollover account (${rolloverAccountId}),`,
+			`rollover payee (${rolloverPayeeId}),`,
+			`rollover category ID (${rolloverCategoryId}),`,
+			`or inflows category ID (${inflowsCategoryId}).`,
+			`Please clear the cache.`
 		)
 
 		process.exit(-1)
@@ -209,6 +218,23 @@ export async function applyRollovers() {
 
 	const categoriesById = months.map((m) => m.categories.indexBy(`id`))
 
+	function adjust(category: string, inMonth: number, by: number) {
+		let impactFromLastMonth = by
+
+		for (let index = inMonth; index < months.length; index += 1) {
+			if (impactFromLastMonth === 0) {
+				break
+			}
+
+			const month = categoriesById[index][category]!
+			const potentialImpactToNextMonth = -Math.max(month.balance, 0)
+
+			month.balance += impactFromLastMonth
+
+			impactFromLastMonth = Math.max(potentialImpactToNextMonth, impactFromLastMonth)
+		}
+	}
+
 	const promises: Promise<void>[] = []
 	const update: ynab.UpdateTransaction[] = []
 	const create: ynab.SaveTransaction[] = []
@@ -245,7 +271,7 @@ export async function applyRollovers() {
 			if (needsUpdate) {
 				const verb = existing ? `Updating` : `Adding`
 				const preposition = existing
-					? `from ${formatMoney(existing.amount / 1000)} to`
+					? `by ${formatMoney((existing.amount - balanceFromLastMonth) / 1000)} to`
 					: `of`
 
 				log(
@@ -264,36 +290,23 @@ export async function applyRollovers() {
 					payee_id: rolloverPayeeId
 				}
 
-				let impactFromLastMonth = balanceFromLastMonth
-
-				for (let j = i; j < months.length; j += 1) {
-					if (impactFromLastMonth === 0) {
-						break
-					}
-
-					const thisMonth = categoriesById[j][category.id]!
-					const thisMonthBeforeChange = Math.max(thisMonth.balance, 0)
-
-					thisMonth.balance += impactFromLastMonth
-
-					impactFromLastMonth = Math.max(-thisMonthBeforeChange, impactFromLastMonth)
-				}
-
 				if (existing) {
-					category.balance -= existing.amount
+					adjust(category.id, i, balanceFromLastMonth - existing.amount)
 
 					update.push({
 						id: existing.id,
 						...transaction
 					})
 				} else {
+					adjust(category.id, i, balanceFromLastMonth)
+
 					create.push(transaction)
 				}
 			}
 
 			if (
 				offsetGroupIds.includes(category.category_group_id) ||
-				offsetGroupIds.includes(category.original_category_group_id)
+				offsetGroupIds.includes(category.original_category_group_id!)
 			) {
 				unbudgetedSpenditureBalance -= category.balance
 			}
@@ -320,24 +333,30 @@ export async function applyRollovers() {
 			}
 			const verb = existingRollover ? `Updating` : `Adding`
 			const preposition = existingRollover
-				? `from ${formatMoney(existingRollover.amount / 1000)} to`
+				? `by ${formatMoney(
+						(existingRollover.amount - rolloverTransactionOffsetAmount) / 1000
+				  )} to`
 				: `of`
 
 			log(
-				`${verb} rollover offset ${preposition} ${formatMoney(
+				`${verb} rollover offset transaction ${preposition} ${formatMoney(
 					rolloverTransactionOffsetAmount / 1000
 				)} in ${month.month}`
 			)
 
 			if (existingRollover) {
-				rolloverCategory.balance -= existingRollover.amount + rolloverTransaction.amount
+				adjust(
+					rolloverCategoryId,
+					i,
+					rolloverTransaction.amount - existingRollover.amount
+				)
 
 				update.push({
 					id: existingRollover.id,
 					...rolloverTransaction
 				})
 			} else {
-				rolloverCategory.balance += rolloverTransaction.amount
+				adjust(rolloverCategoryId, i, rolloverTransaction.amount)
 
 				create.push(rolloverTransaction)
 			}
@@ -348,25 +367,14 @@ export async function applyRollovers() {
 				unbudgetedSpenditureBalance -
 				(rolloverCategory.balance - rolloverCategory.budgeted)
 
-			let impactFromLastMonth = unbudgetedSpenditureBalance - rolloverCategory.balance
+			const delta = unbudgetedSpenditureBalance - rolloverCategory.balance
 
-			for (let j = i; j < months.length; j += 1) {
-				if (impactFromLastMonth === 0) {
-					break
-				}
-
-				const thisMonth = categoriesById[j][rolloverCategoryId]!
-				const thisMonthBeforeChange = Math.max(thisMonth.balance, 0)
-
-				thisMonth.balance += impactFromLastMonth
-
-				impactFromLastMonth = Math.max(-thisMonthBeforeChange, impactFromLastMonth)
-			}
+			adjust(rolloverCategoryId, i, delta)
 
 			log(
-				`Updating budgeted amount in rollover offset category to ${formatMoney(
-					desiredBudgeted / 1000
-				)} in ${month.month}`
+				`Updating rollover offset budgeted by ${formatMoney(
+					delta / 1000
+				)} to ${formatMoney(desiredBudgeted / 1000)} in ${month.month}`
 			)
 
 			if (!debug) {
