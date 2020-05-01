@@ -242,13 +242,6 @@ export async function applyRollovers() {
 
 			rolloverTransactionOffsetAmount -= balanceFromLastMonth
 
-			if (
-				offsetGroupIds.includes(category.category_group_id) ||
-				offsetGroupIds.includes(category.original_category_group_id)
-			) {
-				unbudgetedSpenditureBalance -= category.balance
-			}
-
 			if (needsUpdate) {
 				const verb = existing ? `Updating` : `Adding`
 				const preposition = existing
@@ -296,6 +289,13 @@ export async function applyRollovers() {
 				} else {
 					create.push(transaction)
 				}
+			}
+
+			if (
+				offsetGroupIds.includes(category.category_group_id) ||
+				offsetGroupIds.includes(category.original_category_group_id)
+			) {
+				unbudgetedSpenditureBalance -= category.balance
 			}
 		}
 
