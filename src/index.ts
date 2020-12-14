@@ -5,7 +5,7 @@ import storage from "node-persist"
 import path from "path"
 import * as ynab from "ynab"
 
-import { applyRollovers, clearCache, zeroOutRollovers } from "./functions"
+import { apply, clear, zero } from "./functions"
 import { error, prompt } from "./helpers"
 
 // This is the access token if we need it.
@@ -68,11 +68,11 @@ async function run() {
 
 	switch (action) {
 		case `apply`:
-			return applyRollovers()
+			return apply()
 		case `zero`:
-			return zeroOutRollovers()
+			return zero()
 		case `clear`:
-			return clearCache()
+			return clear()
 	}
 
 	// tslint:disable-next-line: no-unnecessary-type-assertion
@@ -87,11 +87,11 @@ Type a number (q to quit): `,
 
 	switch (response) {
 		case `1`:
-			return applyRollovers()
+			return apply()
 		case `2`:
-			return zeroOutRollovers()
+			return zero()
 		case `3`:
-			return clearCache()
+			return clear()
 		default:
 			return undefined
 	}

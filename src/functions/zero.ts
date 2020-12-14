@@ -2,7 +2,8 @@ import * as ynab from "ynab"
 
 import { api, debug, Key, Name, Storage } from "../index"
 
-export async function zeroOutRollovers() {
+/** Zero out all the rollover transactions */
+export async function zero() {
 	const storage = await Storage
 
 	const payeeId = await storage.getItem<string>(Key.rolloverPayeeId).then(async (id) => {

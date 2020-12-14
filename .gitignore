@@ -1,6 +1,7 @@
 ### Custom ###
 # Built stuff
-build/
+/build
+/src/db
 *.tsbuildinfo
 *.token
 
@@ -128,11 +129,11 @@ public/
 # DynamoDB Local files
 .dynamodb/
 
-### VisualStudioCode ###
-.vscode/*
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+# ### VisualStudioCode ###
+# .vscode/*
+# !.vscode/tasks.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
 
 ### VisualStudioCode Patch ###
 # Ignore all local history of files

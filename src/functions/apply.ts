@@ -3,7 +3,8 @@ import * as ynab from "ynab"
 import { areEqual, error, formatMoney, log, Tuple } from "../helpers"
 import { api, debug, Key, Name, Storage } from "../index"
 
-export async function applyRollovers() {
+/** Apply the rollover transactions and offsets.  */
+export async function apply() {
 	const storage = await Storage
 
 	const rolloverAccountId = await storage
@@ -218,23 +219,6 @@ export async function applyRollovers() {
 
 	const categoriesById = months.map((m) => m.categories.indexBy(`id`))
 
-	function adjust(category: string, inMonth: number, by: number) {
-		let impactFromLastMonth = by
-
-		for (let index = inMonth; index < months.length; index += 1) {
-			if (impactFromLastMonth === 0) {
-				break
-			}
-
-			const month = categoriesById[index][category]!
-			const potentialImpactToNextMonth = -Math.max(month.balance, 0)
-
-			month.balance += impactFromLastMonth
-
-			impactFromLastMonth = Math.max(potentialImpactToNextMonth, impactFromLastMonth)
-		}
-	}
-
 	const promises: Promise<void>[] = []
 	const update: ynab.UpdateTransaction[] = []
 	const create: ynab.SaveTransaction[] = []
@@ -247,7 +231,7 @@ export async function applyRollovers() {
 		}
 
 		let rolloverTransactionOffsetAmount = 0
-		let unbudgetedSpenditureBalance = 0
+		let totalUnbudgetedAmount = 0
 
 		for (const category of month.categories) {
 			if (
@@ -271,12 +255,12 @@ export async function applyRollovers() {
 			if (needsUpdate) {
 				const verb = existing ? `Updating` : `Adding`
 				const preposition = existing
-					? `by ${formatMoney((existing.amount - balanceFromLastMonth) / 1000)} to`
+					? `by ${formatMoney(existing.amount - balanceFromLastMonth)} to`
 					: `of`
 
 				log(
 					`${verb} adjustment for ${category.name} ${preposition} ${formatMoney(
-						balanceFromLastMonth / 1000
+						balanceFromLastMonth
 					)} in ${month.month}`
 				)
 
@@ -291,14 +275,14 @@ export async function applyRollovers() {
 				}
 
 				if (existing) {
-					adjust(category.id, i, balanceFromLastMonth - existing.amount)
+					adjustBalance(category.id, i, balanceFromLastMonth - existing.amount)
 
 					update.push({
 						id: existing.id,
 						...transaction
 					})
 				} else {
-					adjust(category.id, i, balanceFromLastMonth)
+					adjustBalance(category.id, i, balanceFromLastMonth)
 
 					create.push(transaction)
 				}
@@ -308,7 +292,7 @@ export async function applyRollovers() {
 				offsetGroupIds.includes(category.category_group_id) ||
 				offsetGroupIds.includes(category.original_category_group_id!)
 			) {
-				unbudgetedSpenditureBalance -= category.balance
+				totalUnbudgetedAmount -= category.balance
 			}
 		}
 
@@ -319,7 +303,7 @@ export async function applyRollovers() {
 			rolloverTransactionOffsetAmount !== (existingRollover?.amount ?? 0)
 		const balanceNeedsUpdate =
 			transactionNeedsUpdate ||
-			unbudgetedSpenditureBalance !== categoriesById[i][rolloverCategoryId]!.balance
+			totalUnbudgetedAmount !== categoriesById[i][rolloverCategoryId]!.balance
 
 		if (transactionNeedsUpdate) {
 			const rolloverTransaction = {
@@ -334,18 +318,18 @@ export async function applyRollovers() {
 			const verb = existingRollover ? `Updating` : `Adding`
 			const preposition = existingRollover
 				? `by ${formatMoney(
-						(existingRollover.amount - rolloverTransactionOffsetAmount) / 1000
+						existingRollover.amount - rolloverTransactionOffsetAmount
 				  )} to`
 				: `of`
 
 			log(
 				`${verb} rollover offset transaction ${preposition} ${formatMoney(
-					rolloverTransactionOffsetAmount / 1000
+					rolloverTransactionOffsetAmount
 				)} in ${month.month}`
 			)
 
 			if (existingRollover) {
-				adjust(
+				adjustBalance(
 					rolloverCategoryId,
 					i,
 					rolloverTransaction.amount - existingRollover.amount
@@ -356,31 +340,32 @@ export async function applyRollovers() {
 					...rolloverTransaction
 				})
 			} else {
-				adjust(rolloverCategoryId, i, rolloverTransaction.amount)
+				adjustBalance(rolloverCategoryId, i, rolloverTransaction.amount)
 
 				create.push(rolloverTransaction)
 			}
 		}
 
 		if (balanceNeedsUpdate) {
-			const desiredBudgeted =
-				unbudgetedSpenditureBalance -
-				(rolloverCategory.balance - rolloverCategory.budgeted)
+			const { id, balance, budgeted } = rolloverCategory
+			const desiredBudgeted = totalUnbudgetedAmount - (balance - budgeted)
 
-			const delta = unbudgetedSpenditureBalance - rolloverCategory.balance
+			const delta = desiredBudgeted - budgeted
 
-			adjust(rolloverCategoryId, i, delta)
+			adjustBalance(id, i, delta)
 
 			log(
-				`Updating rollover offset budgeted by ${formatMoney(
-					delta / 1000
-				)} to ${formatMoney(desiredBudgeted / 1000)} in ${month.month}`
+				`Updating rollover offset budgeted in ${month.month} by ${formatMoney(
+					delta
+				)} (from ${formatMoney(budgeted)} to ${formatMoney(
+					desiredBudgeted
+				)} for a balance of ${formatMoney(totalUnbudgetedAmount)})`
 			)
 
 			if (!debug) {
 				promises.push(
 					api.categories
-						.updateMonthCategory(Name.budget, month.month, rolloverCategoryId, {
+						.updateMonthCategory(Name.budget, month.month, id, {
 							category: {
 								budgeted: desiredBudgeted
 							}
@@ -426,4 +411,21 @@ export async function applyRollovers() {
 	await Promise.all(promises)
 
 	log(`All done.`)
+
+	function adjustBalance(category: string, inMonth: number, byAmount: number) {
+		if (inMonth >= months.length || byAmount === 0) {
+			return
+		}
+
+		const month = categoriesById[inMonth][category]!
+
+		let impactToNextMonth =
+			month.balance > 0
+				? Math.max(byAmount, -month.balance)
+				: Math.max(0, month.balance + byAmount)
+
+		month.balance += byAmount
+
+		adjustBalance(category, inMonth + 1, impactToNextMonth)
+	}
 }

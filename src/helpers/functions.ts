@@ -176,6 +176,9 @@ export function formatMoney(
 		return undefined
 	}
 
+	// YNAB API uses tenths of cents, for some reason.
+	amount /= 1000
+
 	const digits = (() => {
 		switch (option) {
 			case `long`:

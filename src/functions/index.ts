@@ -1,3 +1,3 @@
-export { applyRollovers } from "./apply-rollovers"
-export { zeroOutRollovers } from "./zero-out-rollovers"
-export { clearCache } from "./clear-db"
+export { apply } from "./apply"
+export { zero } from "./zero"
+export { clear } from "./clear"
