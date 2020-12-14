@@ -12,7 +12,7 @@ import { error, prompt } from "./helpers"
 export let token = process.env.TOKEN && process.env.TOKEN.trim()
 
 /** Whether we are currently debugging */
-export const debug = Boolean(false)
+export const debug = Boolean(process.env.DEBUG)
 
 if (!token) {
 	try {
@@ -47,10 +47,7 @@ export const Name = {
 	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover Offset`,
 	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflows`,
 	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`,
-	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [
-		`Ferreira.Life`,
-		`Unbudgeted`
-	]
+	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [`Unbudgeted`]
 } as const
 
 export type Key = keyof typeof Key

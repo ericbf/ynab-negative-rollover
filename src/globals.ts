@@ -204,11 +204,7 @@ Object.defineProperty(Promise, `wait`, {
 			}
 		},
 		indexBy: {
-			value<
-				K extends keyof T,
-				V extends string | number | null,
-				T extends { [Key in K]?: V }
-			>(this: T[], key: K) {
+			value<K extends keyof T, T extends { [Key in K]?: string }>(this: T[], key: K) {
 				return this.reduce<{ [K: string]: T | undefined }>((trans, next) => {
 					trans[next[key] ?? `undefined`] = next
 
@@ -217,11 +213,7 @@ Object.defineProperty(Promise, `wait`, {
 			}
 		},
 		groupBy: {
-			value<
-				K extends keyof T,
-				V extends string | number | null,
-				T extends { [Key in K]?: V }
-			>(this: T[], key: K) {
+			value<K extends keyof T, T extends { [Key in K]?: string }>(this: T[], key: K) {
 				return this.reduce<{ [K: string]: T[] | undefined }>((trans, next) => {
 					const arr = trans[next[key] ?? `undefined`]
 
