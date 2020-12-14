@@ -45,7 +45,7 @@ export function make<T extends ConsoleMethods>(
 
 		if (stackLevel != undefined) {
 			const frames = stackTrace.get()
-			const site = frames[stackLevel] || frames.last
+			const site = frames[stackLevel] || frames.last!
 			const file = site.getFileName().split(`${appRoot.path}/`)[1]
 
 			stack = ` ${file}:${site.getLineNumber()}:${site.getColumnNumber()}`

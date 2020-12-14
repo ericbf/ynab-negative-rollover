@@ -172,8 +172,8 @@ Object.defineProperty(Promise, `wait`, {
 				const matches: T[] = []
 
 				for (let i = this.length - 1; i >= 0; i -= 1) {
-					if (predicate.call(thisArg!, this[i], i, this)) {
-						matches.unshift(this.splice(i, 1)[0])
+					if (predicate.call(thisArg!, this[i]!, i, this)) {
+						matches.unshift(this.splice(i, 1)[0]!)
 					}
 				}
 

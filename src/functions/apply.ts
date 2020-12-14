@@ -217,14 +217,14 @@ export async function apply() {
 		(_, v) => v?.indexBy(`category_id`)
 	)
 
-	const categoriesById = months.map((m) => m.categories.indexBy(`id`))
+	const categoryMaps = months.map((m) => m.categories.indexBy(`id`))
 
 	const promises: Promise<void>[] = []
 	const update: ynab.UpdateTransaction[] = []
 	const create: ynab.SaveTransaction[] = []
 
-	for (let i = 0; i < months.length; i += 1) {
-		const month = months[i]
+	for (const [i, month] of months.entries()) {
+		const categoryMap = categoryMaps[i]!
 
 		if (month.month >= nextMonthString) {
 			continue
@@ -245,7 +245,7 @@ export async function apply() {
 
 			const existing = rolloverByDateThenCategory[month.month]?.[category.id]
 			const balanceFromLastMonth = Math.min(
-				categoriesById[i - 1]?.[category.id]?.balance ?? 0,
+				categoryMaps[i - 1]?.[category.id]?.balance ?? 0,
 				0
 			)
 			const needsUpdate = balanceFromLastMonth !== (existing?.amount ?? 0)
@@ -298,12 +298,11 @@ export async function apply() {
 
 		const existingRollover = rolloverByDateThenCategory[month.month]?.[rolloverCategoryId]
 
-		const rolloverCategory = categoriesById[i][rolloverCategoryId]!
 		const transactionNeedsUpdate =
 			rolloverTransactionOffsetAmount !== (existingRollover?.amount ?? 0)
 		const balanceNeedsUpdate =
 			transactionNeedsUpdate ||
-			totalUnbudgetedAmount !== categoriesById[i][rolloverCategoryId]!.balance
+			totalUnbudgetedAmount !== categoryMap[rolloverCategoryId]?.balance
 
 		if (transactionNeedsUpdate) {
 			const rolloverTransaction = {
@@ -347,7 +346,7 @@ export async function apply() {
 		}
 
 		if (balanceNeedsUpdate) {
-			const { id, balance, budgeted } = rolloverCategory
+			const { id, balance, budgeted } = categoryMap?.[rolloverCategoryId]!
 			const desiredBudgeted = totalUnbudgetedAmount - (balance - budgeted)
 
 			const delta = desiredBudgeted - budgeted
@@ -413,11 +412,15 @@ export async function apply() {
 	log(`All done.`)
 
 	function adjustBalance(category: string, inMonth: number, byAmount: number) {
-		if (inMonth >= months.length || byAmount === 0) {
+		if (byAmount === 0 || inMonth >= months.length) {
 			return
 		}
 
-		const month = categoriesById[inMonth][category]!
+		const month = categoryMaps[inMonth]?.[category]
+
+		if (!month) {
+			return
+		}
 
 		let impactToNextMonth =
 			month.balance > 0

@@ -18,6 +18,7 @@
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
+		"noUncheckedIndexedAccess": true,
 		"paths": {
 			"*": ["src/types/*"],
 			"@src": ["src"],
