@@ -45,7 +45,7 @@ export const Name = {
 	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget Rollover`,
 	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget Rollover`,
 	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover Offset`,
-	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflows`,
+	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflow: Ready to Assign`,
 	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`,
 	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [`Unbudgeted`]
 } as const
