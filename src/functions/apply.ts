@@ -56,11 +56,12 @@ export async function apply() {
 	const [
 		paymentsGroupId,
 		rolloverCategoryId,
+		futureCategoryId,
 		inflowsCategoryId,
 		offsetGroupIds
 	] = await storage
 		.getItem(Key.paymentsRolloverAndInflowsGroupIds)
-		.then<[string | undefined, string, string, string[]]>(async (ids) => {
+		.then<[string | undefined, string, string, string, string[]]>(async (ids) => {
 			if (ids) {
 				return ids
 			}
@@ -86,6 +87,16 @@ export async function apply() {
 				)
 			}
 
+			const future = groups.mappedFind(({ categories }) =>
+				categories.find((category) => category.name === Name.futureCategory)
+			)
+
+			if (!future) {
+				throw new Error(
+					`Future budgeted category was not found. Please create a budget category called "${Name.futureCategory}".`
+				)
+			}
+
 			const inflows = groups.mappedFind(({ categories }) =>
 				categories.find((category) => category.name === Name.inflowsCategory)
 			)
@@ -99,6 +110,7 @@ export async function apply() {
 			const values = Tuple(
 				paymentsGroup?.id,
 				rollover.id,
+				future.id,
 				inflows.id,
 				offsetGroups.map(({ id }) => id)
 			)
@@ -126,10 +138,12 @@ export async function apply() {
 	}
 
 	const now = new Date()
-	const currentYear = now.getFullYear()
-	const nextMonth = `0${now.getMonth() + 2}`.slice(-2)
-	const upperLimit = `${currentYear}-${nextMonth}`
-	const nextMonthString = `${upperLimit}-01`
+	const currentMonthPadded = `0${now.getMonth() + 1}`.slice(-2)
+	const currentMonth = `${now.getFullYear()}-${currentMonthPadded}-01`
+
+	const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+	const nextMonthPadded = `0${nextMonthDate.getMonth() + 1}`.slice(-2)
+	const nextMonth = `${nextMonthDate.getFullYear()}-${nextMonthPadded}-01`
 
 	const {
 		data: { months: changedMonths, server_knowledge: monthsKnowledge }
@@ -164,7 +178,7 @@ export async function apply() {
 
 		months.sortBy(`month`).removeMatching((month) => {
 			return (
-				month.month > nextMonthString ||
+				month.month > nextMonth ||
 				areEqual(0, month.activity, month.budgeted, month.income, month.to_be_budgeted)
 			)
 		})
@@ -223,19 +237,25 @@ export async function apply() {
 	const update: ynab.UpdateTransaction[] = []
 	const create: ynab.SaveTransaction[] = []
 
+	let futureBudgetedAmount = 0
+	let rolledOverByAssigning = 0
+
 	for (const [i, month] of months.entries()) {
 		const categoryMap = categoryMaps[i]!
-
-		if (month.month >= nextMonthString) {
-			continue
-		}
 
 		let rolloverTransactionOffsetAmount = 0
 		let totalUnbudgetedAmount = 0
 
+		const lastMonthsCategories = categoryMaps[i - 1]
+
 		for (const category of month.categories) {
+			const balanceFromLastMonth = Math.min(
+				lastMonthsCategories?.[category.id]?.balance ?? 0,
+				0
+			)
+
 			if (
-				[inflowsCategoryId, rolloverCategoryId].includes(category.id) ||
+				[inflowsCategoryId, rolloverCategoryId, futureCategoryId].includes(category.id) ||
 				[category.category_group_id, category.original_category_group_id].includes(
 					paymentsGroupId
 				)
@@ -243,134 +263,251 @@ export async function apply() {
 				continue
 			}
 
-			const existing = rolloverByDateThenCategory[month.month]?.[category.id]
-			const balanceFromLastMonth = Math.min(
-				categoryMaps[i - 1]?.[category.id]?.balance ?? 0,
-				0
-			)
-			const needsUpdate = balanceFromLastMonth !== (existing?.amount ?? 0)
+			if (month.month <= currentMonth) {
+				const existing = rolloverByDateThenCategory[month.month]?.[category.id]
+				const needsUpdate = balanceFromLastMonth !== (existing?.amount ?? 0)
 
-			rolloverTransactionOffsetAmount -= balanceFromLastMonth
+				rolloverTransactionOffsetAmount -= balanceFromLastMonth
 
-			if (needsUpdate) {
-				const verb = existing ? `Updating` : `Adding`
-				const preposition = existing
-					? `by ${formatMoney(existing.amount - balanceFromLastMonth)} to`
-					: `of`
+				if (needsUpdate) {
+					const [verb, preposition] = existing
+						? [`Updating`, `by ${formatMoney(existing.amount - balanceFromLastMonth)} to`]
+						: [`Adding`, `of`]
 
-				log(
-					`${verb} adjustment for ${category.name} ${preposition} ${formatMoney(
-						balanceFromLastMonth
-					)} in ${month.month}`
-				)
+					log(
+						`${verb} adjustment for ${category.name} ${preposition} ${formatMoney(
+							balanceFromLastMonth
+						)} in ${month.month}`
+					)
 
-				const transaction = {
-					account_id: rolloverAccountId,
-					category_id: category.id,
-					amount: balanceFromLastMonth,
-					approved: true,
-					cleared: ynab.SaveTransaction.ClearedEnum.Cleared,
-					date: month.month,
-					payee_id: rolloverPayeeId
-				}
+					const transaction = {
+						account_id: rolloverAccountId,
+						category_id: category.id,
+						amount: balanceFromLastMonth,
+						approved: true,
+						cleared: ynab.SaveTransaction.ClearedEnum.Cleared,
+						date: month.month,
+						payee_id: rolloverPayeeId
+					}
 
-				if (existing) {
-					adjustBalance(category.id, i, balanceFromLastMonth - existing.amount)
+					if (existing) {
+						adjustBalance(category.id, i, balanceFromLastMonth - existing.amount)
 
-					update.push({
-						id: existing.id,
-						...transaction
-					})
-				} else {
-					adjustBalance(category.id, i, balanceFromLastMonth)
+						update.push({
+							id: existing.id,
+							...transaction
+						})
+					} else {
+						adjustBalance(category.id, i, balanceFromLastMonth)
 
-					create.push(transaction)
+						create.push(transaction)
+					}
 				}
 			}
 
 			if (
-				offsetGroupIds.includes(category.category_group_id) ||
-				offsetGroupIds.includes(category.original_category_group_id!)
+				[category.category_group_id, category.original_category_group_id!].some((id) =>
+					offsetGroupIds.includes(id)
+				)
 			) {
-				totalUnbudgetedAmount -= category.balance
+				// Category is inside the offset groups
+				if (month.month <= currentMonth) {
+					// Reset budgeted amount in offset groups
+					if (category.budgeted !== 0) {
+						// Budget to future budgeted amount and from future budgeted amount next month
+						log(`Resetting budgeted amount in ${category.name} for ${month.month}`)
+
+						adjustBalance(futureCategoryId, i - 1, -category.budgeted)
+
+						if (!debug) {
+							promises.push(
+								api.categories
+									.updateMonthCategory(Name.budget, month.month, category.id, {
+										category: {
+											budgeted: 0
+										}
+									})
+									.then()
+							)
+						}
+					}
+
+					totalUnbudgetedAmount -= category.balance
+				} else if (month.month === nextMonth && balanceFromLastMonth < 0) {
+					// Rollover by assigning from current month to future month
+					rolledOverByAssigning -= balanceFromLastMonth
+
+					if (category.budgeted !== balanceFromLastMonth) {
+						log(
+							`Rolling ${formatMoney(balanceFromLastMonth)} in ${
+								category.name
+							} over to future month by assigning.`
+						)
+
+						adjustBalance(category.id, i, balanceFromLastMonth - category.budgeted)
+
+						if (!debug) {
+							promises.push(
+								api.categories
+									.updateMonthCategory(Name.budget, month.month, category.id, {
+										category: {
+											budgeted: balanceFromLastMonth
+										}
+									})
+									.then()
+							)
+						}
+					}
+				}
+			} else if (month.month === nextMonth && category.budgeted !== 0) {
+				// Calculate balance for future budgeted
+				futureBudgetedAmount += category.budgeted
 			}
 		}
 
-		const existingRollover = rolloverByDateThenCategory[month.month]?.[rolloverCategoryId]
+		if (month.month <= currentMonth) {
+			const existingRollover =
+				rolloverByDateThenCategory[month.month]?.[rolloverCategoryId]
 
-		const transactionNeedsUpdate =
-			rolloverTransactionOffsetAmount !== (existingRollover?.amount ?? 0)
-		const balanceNeedsUpdate =
-			transactionNeedsUpdate ||
-			totalUnbudgetedAmount !== categoryMap[rolloverCategoryId]?.balance
+			const transactionNeedsUpdate =
+				rolloverTransactionOffsetAmount !== (existingRollover?.amount ?? 0)
+			const balanceNeedsUpdate =
+				transactionNeedsUpdate ||
+				totalUnbudgetedAmount !== categoryMap[rolloverCategoryId]?.balance
 
-		if (transactionNeedsUpdate) {
-			const rolloverTransaction = {
-				account_id: rolloverAccountId,
-				category_id: rolloverCategoryId,
-				amount: rolloverTransactionOffsetAmount,
-				approved: true,
-				cleared: ynab.UpdateTransaction.ClearedEnum.Cleared,
-				date: month.month,
-				payee_id: rolloverPayeeId
+			if (transactionNeedsUpdate) {
+				const rolloverTransaction = {
+					account_id: rolloverAccountId,
+					category_id: rolloverCategoryId,
+					amount: rolloverTransactionOffsetAmount,
+					approved: true,
+					cleared: ynab.UpdateTransaction.ClearedEnum.Cleared,
+					date: month.month,
+					payee_id: rolloverPayeeId
+				}
+				const verb = existingRollover ? `Updating` : `Adding`
+				const preposition = existingRollover
+					? `by ${formatMoney(
+							existingRollover.amount - rolloverTransactionOffsetAmount
+					  )} to`
+					: `of`
+
+				log(
+					`${verb} rollover offset transaction ${preposition} ${formatMoney(
+						rolloverTransactionOffsetAmount
+					)} in ${month.month}`
+				)
+
+				if (existingRollover) {
+					adjustBalance(
+						rolloverCategoryId,
+						i,
+						rolloverTransaction.amount - existingRollover.amount
+					)
+
+					update.push({
+						id: existingRollover.id,
+						...rolloverTransaction
+					})
+				} else {
+					adjustBalance(rolloverCategoryId, i, rolloverTransaction.amount)
+
+					create.push(rolloverTransaction)
+				}
 			}
-			const verb = existingRollover ? `Updating` : `Adding`
-			const preposition = existingRollover
-				? `by ${formatMoney(
-						existingRollover.amount - rolloverTransactionOffsetAmount
-				  )} to`
-				: `of`
 
-			log(
-				`${verb} rollover offset transaction ${preposition} ${formatMoney(
-					rolloverTransactionOffsetAmount
-				)} in ${month.month}`
+			if (balanceNeedsUpdate) {
+				const { id, balance, budgeted } = categoryMap?.[rolloverCategoryId]!
+				const desiredBudgeted = totalUnbudgetedAmount - (balance - budgeted)
+
+				const delta = desiredBudgeted - budgeted
+
+				log(
+					`Updating rollover offset budgeted in ${month.month} by ${formatMoney(
+						delta
+					)} (from ${formatMoney(budgeted)} to ${formatMoney(
+						desiredBudgeted
+					)} for a balance of ${formatMoney(totalUnbudgetedAmount)})`
+				)
+
+				adjustBalance(id, i, delta)
+
+				if (!debug) {
+					promises.push(
+						api.categories
+							.updateMonthCategory(Name.budget, month.month, id, {
+								category: {
+									budgeted: desiredBudgeted
+								}
+							})
+							.then()
+					)
+				}
+			}
+
+			const futureBudgetedCategory = categoryMap[futureCategoryId]
+
+			if (
+				month.month < currentMonth &&
+				futureBudgetedCategory &&
+				futureBudgetedCategory.budgeted !== 0
+			) {
+				// Budget to future budgeted amount and from future budgeted amount next month
+				log(`Resetting future budgeted category in ${month.month}`)
+
+				adjustBalance(futureCategoryId, i - 1, -futureBudgetedCategory.budgeted)
+
+				if (!debug) {
+					promises.push(
+						api.categories
+							.updateMonthCategory(Name.budget, month.month, futureCategoryId, {
+								category: {
+									budgeted: 0
+								}
+							})
+							.then()
+					)
+				}
+			}
+		} else if (month.month === nextMonth) {
+			const currentFutureBudgeted = lastMonthsCategories![futureCategoryId]!
+			const nextFutureBudgeted = categoryMaps[i]![futureCategoryId]!
+
+			const currentFutureBudgetedBudgeted = currentFutureBudgeted.budgeted
+
+			const futureBudgetedAmountOffset = Math.min(
+				futureBudgetedAmount,
+				rolledOverByAssigning
 			)
 
-			if (existingRollover) {
+			if (futureBudgetedAmountOffset !== currentFutureBudgetedBudgeted) {
+				// Budget to future budgeted amount and from future budgeted amount next month
+				log(`Adjusting future budgeted amount to ${futureBudgetedAmountOffset}`)
+
 				adjustBalance(
-					rolloverCategoryId,
-					i,
-					rolloverTransaction.amount - existingRollover.amount
+					futureCategoryId,
+					i - 1,
+					futureBudgetedAmountOffset - currentFutureBudgetedBudgeted
 				)
 
-				update.push({
-					id: existingRollover.id,
-					...rolloverTransaction
-				})
-			} else {
-				adjustBalance(rolloverCategoryId, i, rolloverTransaction.amount)
-
-				create.push(rolloverTransaction)
-			}
-		}
-
-		if (balanceNeedsUpdate) {
-			const { id, balance, budgeted } = categoryMap?.[rolloverCategoryId]!
-			const desiredBudgeted = totalUnbudgetedAmount - (balance - budgeted)
-
-			const delta = desiredBudgeted - budgeted
-
-			adjustBalance(id, i, delta)
-
-			log(
-				`Updating rollover offset budgeted in ${month.month} by ${formatMoney(
-					delta
-				)} (from ${formatMoney(budgeted)} to ${formatMoney(
-					desiredBudgeted
-				)} for a balance of ${formatMoney(totalUnbudgetedAmount)})`
-			)
-
-			if (!debug) {
-				promises.push(
-					api.categories
-						.updateMonthCategory(Name.budget, month.month, id, {
-							category: {
-								budgeted: desiredBudgeted
-							}
-						})
-						.then()
-				)
+				if (!debug) {
+					promises.push(
+						api.categories
+							.updateMonthCategory(Name.budget, currentMonth, futureCategoryId, {
+								category: {
+									budgeted: futureBudgetedAmountOffset
+								}
+							})
+							.then(),
+						api.categories
+							.updateMonthCategory(Name.budget, nextMonth, futureCategoryId, {
+								category: {
+									budgeted: -nextFutureBudgeted.balance
+								}
+							})
+							.then()
+					)
+				}
 			}
 		}
 	}

@@ -42,9 +42,10 @@ export const Storage = storage
 export type Name = keyof typeof Name
 export const Name = {
 	budget: process.env.BUDGET_NAME || `last-used`,
-	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget Rollover`,
-	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget Rollover`,
-	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover Offset`,
+	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget rollover`,
+	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget rollover`,
+	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover offset`,
+	futureCategory: process.env.ROLLOVER_CATEGORY || `Future budgeted`,
 	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflow: Ready to Assign`,
 	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`,
 	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [`Unbudgeted`]
@@ -56,7 +57,9 @@ export const Key = {
 	rolloverPayeeId: `${Name.budget}_payee_${Name.rolloverPayee}`,
 	paymentsRolloverAndInflowsGroupIds: `${Name.budget}_paymentsGroup_${
 		Name.creditCardPayments
-	}_${Name.rolloverCategory}_${Name.inflowsCategory}_${Name.groupsToOffset.join(`_`)}`,
+	}_${Name.rolloverCategory}_${Name.futureCategory}_${
+		Name.inflowsCategory
+	}_${Name.groupsToOffset.join(`_`)}`,
 	monthsKnowledge: `${Name.budget}_months_knowledge`,
 	monthsData: `${Name.budget}_months_data`,
 	rolloverTransactionsKnowledge: `${Name.budget}_rollover_transactions_knowledge`,
@@ -98,5 +101,5 @@ Type a number (q to quit): `,
 }
 
 module.exports = run().catch((err) =>
-	error(`An exception was thrown:`, err.detail || err.message || err.descripton || err)
+	error(`An exception was thrown:`, err.detail || err.message || err.description || err)
 )
