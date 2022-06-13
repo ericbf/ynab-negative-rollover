@@ -470,39 +470,46 @@ export async function apply() {
 				}
 			}
 		} else if (month.month === nextMonth) {
-			const currentFutureBudgeted = lastMonthsCategories![futureCategoryId]!
+			const currentFutureBudgeted = lastMonthsCategories![futureCategoryId]!.budgeted
 			const nextFutureBudgeted = categoryMaps[i]![futureCategoryId]!
 
-			const currentFutureBudgetedBudgeted = currentFutureBudgeted.budgeted
+			console.log("Budgeted:", futureBudgetedAmount)
+			console.log("Rolled over:", rolledOverByAssigning)
 
-			const futureBudgetedAmountOffset = Math.min(
-				futureBudgetedAmount,
-				rolledOverByAssigning
-			)
-
-			if (futureBudgetedAmountOffset !== currentFutureBudgetedBudgeted) {
+			if (
+				futureBudgetedAmount !== currentFutureBudgeted ||
+				-futureBudgetedAmount !== nextFutureBudgeted.budgeted
+			) {
 				// Budget to future budgeted amount and from future budgeted amount next month
-				log(`Adjusting future budgeted amount to ${futureBudgetedAmountOffset}`)
+				log(`Adjusting future budgeted amount to ${futureBudgetedAmount}`)
 
 				adjustBalance(
 					futureCategoryId,
 					i - 1,
-					futureBudgetedAmountOffset - currentFutureBudgetedBudgeted
+					futureBudgetedAmount - currentFutureBudgeted
 				)
+
+				if (-futureBudgetedAmount !== nextFutureBudgeted.budgeted) {
+					adjustBalance(
+						futureCategoryId,
+						i,
+						-futureBudgetedAmount - nextFutureBudgeted.budgeted
+					)
+				}
 
 				if (!debug) {
 					promises.push(
 						api.categories
 							.updateMonthCategory(Name.budget, currentMonth, futureCategoryId, {
 								category: {
-									budgeted: futureBudgetedAmountOffset
+									budgeted: futureBudgetedAmount
 								}
 							})
 							.then(),
 						api.categories
 							.updateMonthCategory(Name.budget, nextMonth, futureCategoryId, {
 								category: {
-									budgeted: -nextFutureBudgeted.balance
+									budgeted: -futureBudgetedAmount
 								}
 							})
 							.then()
