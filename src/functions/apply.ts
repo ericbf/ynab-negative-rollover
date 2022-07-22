@@ -238,7 +238,6 @@ export async function apply() {
 	const create: ynab.SaveTransaction[] = []
 
 	let futureBudgetedAmount = 0
-	let rolledOverByAssigning = 0
 
 	for (const [i, month] of months.entries()) {
 		const categoryMap = categoryMaps[i]!
@@ -334,9 +333,6 @@ export async function apply() {
 
 					totalUnbudgetedAmount -= category.balance
 				} else if (month.month === nextMonth && balanceFromLastMonth < 0) {
-					// Rollover by assigning from current month to future month
-					rolledOverByAssigning -= balanceFromLastMonth
-
 					if (category.budgeted !== balanceFromLastMonth) {
 						log(
 							`Rolling ${formatMoney(balanceFromLastMonth)} in ${
@@ -472,9 +468,6 @@ export async function apply() {
 		} else if (month.month === nextMonth) {
 			const currentFutureBudgeted = lastMonthsCategories![futureCategoryId]!.budgeted
 			const nextFutureBudgeted = categoryMaps[i]![futureCategoryId]!
-
-			console.log("Budgeted:", futureBudgetedAmount)
-			console.log("Rolled over:", rolledOverByAssigning)
 
 			if (
 				futureBudgetedAmount !== currentFutureBudgeted ||
