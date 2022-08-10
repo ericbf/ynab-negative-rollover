@@ -311,26 +311,6 @@ export async function apply() {
 			) {
 				// Category is inside the offset groups
 				if (month.month <= currentMonth) {
-					// Reset budgeted amount in offset groups
-					if (category.budgeted !== 0) {
-						// Budget to future budgeted amount and from future budgeted amount next month
-						log(`Resetting budgeted amount in ${category.name} for ${month.month}`)
-
-						adjustBalance(futureCategoryId, i - 1, -category.budgeted)
-
-						if (!debug) {
-							promises.push(
-								api.categories
-									.updateMonthCategory(Name.budget, month.month, category.id, {
-										category: {
-											budgeted: 0
-										}
-									})
-									.then()
-							)
-						}
-					}
-
 					totalUnbudgetedAmount -= category.balance
 				} else if (month.month === nextMonth && balanceFromLastMonth < 0) {
 					if (category.budgeted !== balanceFromLastMonth) {
