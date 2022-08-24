@@ -311,7 +311,9 @@ export async function apply() {
 			) {
 				// Category is inside the offset groups
 				if (month.month <= currentMonth) {
-					totalUnbudgetedAmount -= category.balance
+					if (category.balance < 0) {
+						totalUnbudgetedAmount -= category.balance
+					}
 				} else if (month.month === nextMonth && balanceFromLastMonth < 0) {
 					if (category.budgeted !== balanceFromLastMonth) {
 						log(
