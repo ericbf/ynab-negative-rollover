@@ -7,6 +7,7 @@ import * as ynab from "ynab"
 
 import { apply, clear, zero } from "./functions"
 import { error, prompt } from "./helpers"
+import { marketValue } from "./functions/market-value"
 
 // This is the access token if we need it.
 export let token = process.env.TOKEN && process.env.TOKEN.trim()
@@ -41,7 +42,7 @@ export const Storage = storage
 
 export type Name = keyof typeof Name
 export const Name = {
-	budget: process.env.BUDGET_NAME || `last-used`,
+	budget: process.env.BUDGET_ID || `last-used`,
 	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget rollover`,
 	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget rollover`,
 	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover offset`,
@@ -76,24 +77,29 @@ async function run() {
 			return zero()
 		case `clear`:
 			return clear()
+		case `market-value`:
+			return marketValue()
 	}
 
 	// tslint:disable-next-line: no-unnecessary-type-assertion
 	const response = (await prompt(
 		`Which would you like?
     1. Apply rollover transactions.
-    2. Zero out rollover transactions.
-    3. Clear cache.
+    2. Update market value on accounts using other currencies.
+    3. Zero out rollover transactions.
+    4. Clear cache.
 Type a number (q to quit): `,
 		/[123q]/i
-	)) as `1` | `2` | `3` | `q` | `Q`
+	)) as `1` | `2` | `3` | `4` | `q` | `Q`
 
 	switch (response) {
 		case `1`:
 			return apply()
 		case `2`:
-			return zero()
+			return marketValue()
 		case `3`:
+			return zero()
+		case `4`:
 			return clear()
 		default:
 			return undefined
