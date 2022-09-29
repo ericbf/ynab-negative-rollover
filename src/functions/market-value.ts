@@ -32,9 +32,10 @@ export async function marketValue() {
 		const cost = parseFloat(costResponse.USD)
 		const currentValue = Math.round(balance * cost * 1000)
 
-		if (account.balance != currentValue) {
-			const date = new Date().toISOString().split("T")[0]!
+		const now = new Date()
+		const date = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
 
+		if (account.balance != currentValue) {
 			const transactionsRequest = await api.transactions.getTransactionsByAccount(
 				Name.budget,
 				account.id,
