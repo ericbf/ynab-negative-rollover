@@ -1,14 +1,17 @@
-import { SaveTransaction, SaveTransactionsWrapper, UpdateTransactionsWrapper } from "ynab"
-import fetch from "node-fetch"
+import {
+	PatchTransactionsWrapper,
+	PostTransactionsWrapper,
+	TransactionClearedStatus
+} from "ynab"
 
-import { api, Name } from "../index"
+import { api, env } from "../index"
 
 /** Apply the rollover transactions and offsets.  */
-export async function marketValue() {
-	const accounts = await api.accounts.getAccounts(Name.budget)
+export default async function marketValue() {
+	const accounts = await api.accounts.getAccounts(env.budget)
 
-	const toCreate: SaveTransactionsWrapper = { transactions: [] }
-	const toUpdate: UpdateTransactionsWrapper = { transactions: [] }
+	const toCreate: PostTransactionsWrapper = { transactions: [] }
+	const toUpdate: PatchTransactionsWrapper = { transactions: [] }
 
 	for (const account of accounts.data.accounts) {
 		if (!account.note) {
@@ -25,9 +28,9 @@ export async function marketValue() {
 		const currency = parts[2]
 
 		// TODO: support other base currencies
-		const costResponse = await fetch(
+		const costResponse = (await fetch(
 			`https://min-api.cryptocompare.com/data/price?fsym=${currency}&tsyms=USD`
-		).then((r) => r.json())
+		).then((r) => r.json())) as { USD: string }
 
 		const cost = parseFloat(costResponse.USD)
 		const currentValue = Math.round(balance * cost * 1000)
@@ -37,7 +40,7 @@ export async function marketValue() {
 
 		if (account.balance != currentValue) {
 			const transactionsRequest = await api.transactions.getTransactionsByAccount(
-				Name.budget,
+				env.budget,
 				account.id,
 				date
 			)
@@ -50,7 +53,7 @@ export async function marketValue() {
 				account_id: account.id,
 				amount: currentValue - account.balance,
 				date,
-				cleared: SaveTransaction.ClearedEnum.Cleared,
+				cleared: TransactionClearedStatus.Cleared,
 				approved: true,
 				payee_name: "Market Change",
 				memo: `Current cost: ${cost} USD\nCurrent balance: ${balance} ${currency}`
@@ -70,8 +73,8 @@ export async function marketValue() {
 
 	return Promise.all([
 		toCreate.transactions?.length &&
-			api.transactions.createTransactions(Name.budget, toCreate),
+			api.transactions.createTransactions(env.budget, toCreate),
 		toUpdate.transactions.length &&
-			api.transactions.updateTransactions(Name.budget, toUpdate)
+			api.transactions.updateTransactions(env.budget, toUpdate)
 	])
 }

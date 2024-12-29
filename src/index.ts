@@ -1,38 +1,26 @@
 import "./globals"
 
-import { readFileSync } from "fs"
+import cron from "node-cron"
 import storage from "node-persist"
 import path from "path"
 import * as ynab from "ynab"
 
-import { apply, clear, zero } from "./functions"
-import { error, prompt } from "./helpers"
-import { marketValue } from "./functions/market-value"
+import { error } from "./helpers/console"
+import prompt from "./helpers/prompt"
 
-// This is the access token if we need it.
-export let token = process.env.TOKEN && process.env.TOKEN.trim()
-
-/** Whether we are currently debugging */
-export const debug = Boolean(process.env.DEBUG)
-
-if (!token) {
-	try {
-		const data = readFileSync(__filename.replace(/\.[^\.]+$/, `.token`))
-
-		token = data.toString().trim()
-	} catch {}
-
-	if (!token) {
-		error(
-			`No access token passed in ENV or token file. We won't be able talk with the API.`
-		)
-
+/** This is the YNAB access token. */
+export let token =
+	process.env.TOKEN ||
+	(() => {
 		throw new Error(
 			`No access token passed in ENV or token file. We won't be able talk with the API.`
 		)
-	}
-}
+	})()
 
+/** Whether we are currently debugging. */
+export const debug = process.env.DEBUG === "true"
+
+/** The YNAB API. */
 export const api = new ynab.API(token)
 
 /** The directory for the db. */
@@ -40,8 +28,8 @@ export const Storage = storage
 	.init({ dir: path.join(__dirname, `db`) })
 	.then(() => storage)
 
-export type Name = keyof typeof Name
-export const Name = {
+export type env = keyof typeof env
+export const env = {
 	budget: process.env.BUDGET_ID || `last-used`,
 	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget rollover`,
 	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget rollover`,
@@ -54,31 +42,50 @@ export const Name = {
 
 export type Key = keyof typeof Key
 export const Key = {
-	rolloverAccountId: `${Name.budget}_account_${Name.rolloverAccount}`,
-	rolloverPayeeId: `${Name.budget}_payee_${Name.rolloverPayee}`,
-	paymentsRolloverAndInflowsGroupIds: `${Name.budget}_paymentsGroup_${
-		Name.creditCardPayments
-	}_${Name.rolloverCategory}_${Name.futureCategory}_${
-		Name.inflowsCategory
-	}_${Name.groupsToOffset.join(`_`)}`,
-	monthsKnowledge: `${Name.budget}_months_knowledge`,
-	monthsData: `${Name.budget}_months_data`,
-	rolloverTransactionsKnowledge: `${Name.budget}_rollover_transactions_knowledge`,
-	rolloverTransactionsData: `${Name.budget}_rollover_transactions_data`
+	rolloverAccountId: `${env.budget}_account_${env.rolloverAccount}`,
+	rolloverPayeeId: `${env.budget}_payee_${env.rolloverPayee}`,
+	paymentsRolloverAndInflowsGroupIds: `${env.budget}_paymentsGroup_${
+		env.creditCardPayments
+	}_${env.rolloverCategory}_${env.futureCategory}_${
+		env.inflowsCategory
+	}_${env.groupsToOffset.join(`_`)}`,
+	monthsKnowledge: `${env.budget}_months_knowledge`,
+	monthsData: `${env.budget}_months_data`,
+	rolloverTransactionsKnowledge: `${env.budget}_rollover_transactions_knowledge`,
+	rolloverTransactionsData: `${env.budget}_rollover_transactions_data`
 } as const
 
 async function run() {
 	const action = process.argv[2]
 
 	switch (action) {
-		case `apply`:
+		case `schedule`: {
+			const apply = await import(`./functions/apply`).then((m) => m.default)
+
+			cron.schedule(`*/2 * * * *`, apply)
+
+			return
+		}
+		case `apply`: {
+			const apply = await import(`./functions/apply`).then((m) => m.default)
+
 			return apply()
-		case `zero`:
+		}
+		case `zero`: {
+			const zero = await import(`./functions/zero`).then((m) => m.default)
+
 			return zero()
-		case `clear`:
+		}
+		case `clear`: {
+			const clear = await import(`./functions/clear`).then((m) => m.default)
+
 			return clear()
-		case `market-value`:
+		}
+		case `market-value`: {
+			const marketValue = await import(`./functions/market-value`).then((m) => m.default)
+
 			return marketValue()
+		}
 	}
 
 	// tslint:disable-next-line: no-unnecessary-type-assertion
@@ -93,14 +100,26 @@ Type a number (q to quit): `,
 	)) as `1` | `2` | `3` | `4` | `q` | `Q`
 
 	switch (response) {
-		case `1`:
+		case `1`: {
+			const apply = await import(`./functions/apply`).then((m) => m.default)
+
 			return apply()
-		case `2`:
+		}
+		case `2`: {
+			const marketValue = await import(`./functions/market-value`).then((m) => m.default)
+
 			return marketValue()
-		case `3`:
+		}
+		case `3`: {
+			const zero = await import(`./functions/zero`).then((m) => m.default)
+
 			return zero()
-		case `4`:
+		}
+		case `4`: {
+			const clear = await import(`./functions/clear`).then((m) => m.default)
+
 			return clear()
+		}
 		default:
 			return undefined
 	}
