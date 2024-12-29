@@ -368,8 +368,8 @@ packages:
     resolution: {integrity: sha512-ethXTt3SGGR+95gudmqJ1eNhRO7eGEGIgYA9vnPatK4/etz2MEVDno5GMCibdMTuBMyElzIlgxMna3K94XDIDQ==}
     engines: {node: 20 || >=22}
 
-  minimatch@3.0.4:
-    resolution: {integrity: sha512-yJHVQEhyqPLUTgt9B83PXu6W3rx4MvvHvSUvToogpwoGDOUQ+yDrR0HRot+yOCdCO7u4hX3pWft6kWBBcqh0UA==}
+  minimatch@3.1.2:
+    resolution: {integrity: sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw==}
 
   minimist@1.2.6:
     resolution: {integrity: sha512-Jsjnk4bw3YJqYzbdyBiNsPWHPfO++UGG749Cxs6peCu5Xg4nrena6OVxOYxrQTqww0Jmwt+Ref8rggumkTLz9Q==}
@@ -799,7 +799,7 @@ snapshots:
   copyfiles@2.4.1:
     dependencies:
       glob: 7.1.6
-      minimatch: 3.0.4
+      minimatch: 3.1.2
       mkdirp: 1.0.4
       noms: 0.0.0
       through2: 2.0.5
@@ -894,7 +894,7 @@ snapshots:
       fs.realpath: 1.0.0
       inflight: 1.0.6
       inherits: 2.0.4
-      minimatch: 3.0.4
+      minimatch: 3.1.2
       once: 1.4.0
       path-is-absolute: 1.0.1
 
@@ -950,7 +950,7 @@ snapshots:
     dependencies:
       brace-expansion: 2.0.1
 
-  minimatch@3.0.4:
+  minimatch@3.1.2:
     dependencies:
       brace-expansion: 1.1.11
 
@@ -1155,7 +1155,7 @@ snapshots:
       diff: 4.0.2
       glob: 7.1.6
       js-yaml: 3.14.0
-      minimatch: 3.0.4
+      minimatch: 3.1.2
       mkdirp: 0.5.5
       resolve: 1.19.0
       semver: 5.7.1
