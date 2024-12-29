@@ -1,0 +1,10 @@
+services:
+  ynab-negative-rollover:
+    container_name: ynab-negative-rollover
+    image: ynab-negative-rollover
+    build:
+      dockerfile: ./Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./.env
+      - ./.env.local

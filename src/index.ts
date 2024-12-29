@@ -1,38 +1,30 @@
 import "./globals"
 
-import { readFileSync } from "fs"
+import cron from "node-cron"
 import storage from "node-persist"
 import path from "path"
 import * as ynab from "ynab"
 
-import { apply, clear, zero } from "./functions"
-import { error, prompt } from "./helpers"
-import { marketValue } from "./functions/market-value"
+import { error } from "./helpers/console"
+import prompt from "./helpers/prompt"
+import apply from "./functions/apply"
+import zero from "./functions/zero"
+import clear from "./functions/clear"
+import marketValue from "./functions/market-value"
 
-// This is the access token if we need it.
-export let token = process.env.TOKEN && process.env.TOKEN.trim()
-
-/** Whether we are currently debugging */
-export const debug = Boolean(process.env.DEBUG)
-
-if (!token) {
-	try {
-		const data = readFileSync(__filename.replace(/\.[^\.]+$/, `.token`))
-
-		token = data.toString().trim()
-	} catch {}
-
-	if (!token) {
-		error(
-			`No access token passed in ENV or token file. We won't be able talk with the API.`
-		)
-
+/** This is the YNAB access token. */
+export let token =
+	process.env.TOKEN ||
+	(() => {
 		throw new Error(
 			`No access token passed in ENV or token file. We won't be able talk with the API.`
 		)
-	}
-}
+	})()
 
+/** Whether we are currently debugging. */
+export const debug = process.env.DEBUG === "true"
+
+/** The YNAB API. */
 export const api = new ynab.API(token)
 
 /** The directory for the db. */
@@ -40,13 +32,13 @@ export const Storage = storage
 	.init({ dir: path.join(__dirname, `db`) })
 	.then(() => storage)
 
-export type Name = keyof typeof Name
-export const Name = {
+export type env = keyof typeof env
+export const env = {
 	budget: process.env.BUDGET_ID || `last-used`,
 	rolloverPayee: process.env.ROLLOVER_PAYEE || `Budget rollover`,
 	rolloverAccount: process.env.ROLLOVER_ACCOUNT || `Budget rollover`,
 	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover offset`,
-	futureCategory: process.env.ROLLOVER_CATEGORY || `Future budgeted`,
+	futureCategory: process.env.FUTURE_CATEGORY || `Future budgeted`,
 	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflow: Ready to Assign`,
 	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`,
 	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [`Unbudgeted`]
@@ -54,23 +46,27 @@ export const Name = {
 
 export type Key = keyof typeof Key
 export const Key = {
-	rolloverAccountId: `${Name.budget}_account_${Name.rolloverAccount}`,
-	rolloverPayeeId: `${Name.budget}_payee_${Name.rolloverPayee}`,
-	paymentsRolloverAndInflowsGroupIds: `${Name.budget}_paymentsGroup_${
-		Name.creditCardPayments
-	}_${Name.rolloverCategory}_${Name.futureCategory}_${
-		Name.inflowsCategory
-	}_${Name.groupsToOffset.join(`_`)}`,
-	monthsKnowledge: `${Name.budget}_months_knowledge`,
-	monthsData: `${Name.budget}_months_data`,
-	rolloverTransactionsKnowledge: `${Name.budget}_rollover_transactions_knowledge`,
-	rolloverTransactionsData: `${Name.budget}_rollover_transactions_data`
+	rolloverAccountId: `${env.budget}_account_${env.rolloverAccount}`,
+	rolloverPayeeId: `${env.budget}_payee_${env.rolloverPayee}`,
+	paymentsRolloverAndInflowsGroupIds: `${env.budget}_paymentsGroup_${
+		env.creditCardPayments
+	}_${env.rolloverCategory}_${env.futureCategory}_${
+		env.inflowsCategory
+	}_${env.groupsToOffset.join(`_`)}`,
+	monthsKnowledge: `${env.budget}_months_knowledge`,
+	monthsData: `${env.budget}_months_data`,
+	rolloverTransactionsKnowledge: `${env.budget}_rollover_transactions_knowledge`,
+	rolloverTransactionsData: `${env.budget}_rollover_transactions_data`
 } as const
 
 async function run() {
 	const action = process.argv[2]
 
 	switch (action) {
+		case `schedule`:
+			cron.schedule(`*/2 * * * *`, apply)
+
+			return
 		case `apply`:
 			return apply()
 		case `zero`:
