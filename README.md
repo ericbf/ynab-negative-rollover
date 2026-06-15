@@ -37,7 +37,9 @@ Rollover"`.
 - `ROLLOVER_CATEGORY`: the category to use for the rollover
   transactions. Defaults to `"Rollover Offset"`.
 - `INFLOWS_CATEGORY`: the name of the inflows
-  category. Defaults to `"Inflows"`.
+  category. Defaults to `"Inflow: Ready to Assign"`.
+- `UNCATEGORIZED_CATEGORY`: the name of the uncategorized
+  category. Defaults to `"Uncategorized"`.
 - `PAYMENTS_GROUP`: the name of the credit card payments group. Defaults to `"Credit Card
 Payments"`.
 - `GROUPS_TO_OFFSET`: the comma separated names of the category groups that should be

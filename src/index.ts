@@ -11,6 +11,9 @@ import apply from "./functions/apply"
 import zero from "./functions/zero"
 import clear from "./functions/clear"
 import marketValue from "./functions/market-value"
+import dotenv from "dotenv-flow"
+
+dotenv.config()
 
 /** This is the YNAB access token. */
 export let token =
@@ -40,8 +43,10 @@ export const env = {
 	rolloverCategory: process.env.ROLLOVER_CATEGORY || `Rollover offset`,
 	futureCategory: process.env.FUTURE_CATEGORY || `Future budgeted`,
 	inflowsCategory: process.env.INFLOWS_CATEGORY || `Inflow: Ready to Assign`,
+	uncategorizedCategory: process.env.UNCATEGORIZED_CATEGORY || `Uncategorized`,
 	creditCardPayments: process.env.PAYMENTS_GROUP || `Credit Card Payments`,
-	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [`Unbudgeted`]
+	groupsToOffset: process.env.GROUPS_TO_OFFSET?.split(`,`) || [`Unbudgeted`],
+	startDate: process.env.START_DATE || `2025-01-01`
 } as const
 
 export type Key = keyof typeof Key
@@ -77,7 +82,6 @@ async function run() {
 			return marketValue()
 	}
 
-	// tslint:disable-next-line: no-unnecessary-type-assertion
 	const response = (await prompt(
 		`Which would you like?
     1. Apply rollover transactions.
@@ -85,10 +89,10 @@ async function run() {
     3. Zero out rollover transactions.
     4. Clear cache.
 Type a number (q to quit): `,
-		/[123q]/i
-	)) as `1` | `2` | `3` | `4` | `q` | `Q`
+		/[1234q]/i
+	)) as `1` | `2` | `3` | `4` | `q`
 
-	switch (response) {
+	switch (response.trim()) {
 		case `1`:
 			return apply()
 		case `2`:

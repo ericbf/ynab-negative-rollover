@@ -64,56 +64,70 @@ export default async function apply() {
 			return value
 		})
 
-	const [paymentsGroupId, rolloverCategoryId, inflowsCategoryId, offsetGroupIds] =
-		await storage
-			.getItem(Key.paymentsRolloverAndInflowsGroupIds)
-			.then<[string | undefined, string, string, string, string[]]>(async (ids) => {
-				if (ids) {
-					return ids
-				}
+	const [
+		paymentsGroupId,
+		rolloverCategoryId,
+		inflowsCategoryId,
+		uncategorizedId,
+		offsetGroupIds
+	] = await storage
+		.getItem(Key.paymentsRolloverAndInflowsGroupIds)
+		.then<[string | undefined, string, string, string, string[]]>(async (ids) => {
+			if (ids) {
+				return ids
+			}
 
-				const groupsData = await api.categories.getCategories(env.budget)
-				const groups = groupsData.data.category_groups
+			const groupsData = await api.categories.getCategories(env.budget)
+			const groups = groupsData.data.category_groups
 
-				const paymentsGroup = groups.find((g) => g.name === env.creditCardPayments)
+			const paymentsGroup = groups.find((g) => g.name === env.creditCardPayments)
 
-				if (!paymentsGroup) {
-					log(
-						`Didn’t find a Credit Card Payments group. If you have credit card accounts set up and see this, please report this.`
-					)
-				}
-
-				const rollover = groups.mappedFind(({ categories }) =>
-					categories.find((category) => category.name === env.rolloverCategory)
+			if (!paymentsGroup) {
+				log(
+					`Didn’t find a Credit Card Payments group. If you have credit card accounts set up and see this, please report this.`
 				)
+			}
 
-				if (!rollover) {
-					throw new Error(
-						`Rollover category was not found. Please create a budget category called "${env.rolloverCategory}".`
-					)
-				}
+			const rollover = groups.mappedFind(({ categories }) =>
+				categories.find((category) => category.name === env.rolloverCategory)
+			)
 
-				const inflows = groups.mappedFind(({ categories }) =>
-					categories.find((category) => category.name === env.inflowsCategory)
+			if (!rollover) {
+				throw new Error(
+					`Rollover category was not found. Please create a budget category called "${env.rolloverCategory}".`
 				)
+			}
 
-				if (!inflows) {
-					throw new Error(`Inflows category was not found. Please report this.`)
-				}
+			const inflows = groups.mappedFind(({ categories }) =>
+				categories.find((category) => category.name === env.inflowsCategory)
+			)
 
-				const offsetGroups = groups.filter((g) => env.groupsToOffset.includes(g.name))
+			if (!inflows) {
+				throw new Error(`Inflows category was not found. Please report this.`)
+			}
 
-				const values = tuple(
-					paymentsGroup?.id,
-					rollover.id,
-					inflows.id,
-					offsetGroups.map(({ id }) => id)
-				)
+			const uncategorized = groups.mappedFind(({ categories }) =>
+				categories.find((category) => category.name === "Uncategorized")
+			)
 
-				await storage.setItem(Key.paymentsRolloverAndInflowsGroupIds, values)
+			if (!uncategorized) {
+				throw new Error(`Uncategorized category was not found. Please report this.`)
+			}
 
-				return values
-			})
+			const offsetGroups = groups.filter((g) => env.groupsToOffset.includes(g.name))
+
+			const values = tuple(
+				paymentsGroup?.id,
+				rollover.id,
+				inflows.id,
+				uncategorized.id,
+				offsetGroups.map(({ id }) => id)
+			)
+
+			await storage.setItem(Key.paymentsRolloverAndInflowsGroupIds, values)
+
+			return values
+		})
 
 	if (
 		!rolloverAccountId ||
@@ -184,6 +198,10 @@ export default async function apply() {
 		await storage.setItem(Key.monthsKnowledge, monthsKnowledge)
 	}
 
+	const previousRolloverTransactionKnowledge = await storage.getItem(
+		Key.rolloverTransactionsKnowledge
+	)
+
 	const {
 		data: {
 			transactions: changedRolloverTransactions,
@@ -193,9 +211,9 @@ export default async function apply() {
 	} = await api.transactions.getTransactionsByPayee(
 		env.budget,
 		rolloverPayeeId,
+		env.startDate,
 		undefined,
-		undefined,
-		await storage.getItem(Key.rolloverTransactionsKnowledge)
+		previousRolloverTransactionKnowledge
 	)
 
 	const rolloverTransactions =
@@ -263,9 +281,9 @@ export default async function apply() {
 				0
 			)
 
-			// * Let's not process transactions from inflows or calculation categories
+			// * Let's not process transactions from inflows, calculation, or uncategorized
 			if (
-				[inflowsCategoryId, rolloverCategoryId].includes(category.id) ||
+				[inflowsCategoryId, rolloverCategoryId, uncategorizedId].includes(category.id) ||
 				[category.category_group_id, category.original_category_group_id].includes(
 					paymentsGroupId
 				)
